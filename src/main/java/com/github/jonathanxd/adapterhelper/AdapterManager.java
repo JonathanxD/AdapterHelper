@@ -30,11 +30,15 @@ package com.github.jonathanxd.adapterhelper;
 import com.github.jonathanxd.iutils.map.WeakValueHashMap;
 import com.github.jonathanxd.iutils.object.Pair;
 import com.github.jonathanxd.iutils.optional.Require;
+import com.github.jonathanxd.iutils.reflection.ClassUtil;
+import com.github.jonathanxd.iutils.type.Primitive;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -158,13 +162,11 @@ public class AdapterManager {
      * @return Converter from {@link I} to {@link O}.
      */
     @SuppressWarnings("unchecked")
-    public <I, O> Optional<Converter<I, O>> getConverter(Class<I> from, Class<O> to) {
+    public <I, O> Optional<Converter<? super I, ? extends O>> getConverter(Class<I> from, Class<O> to) {
         Objects.requireNonNull(from);
         Objects.requireNonNull(to);
 
-        Pair<Class<?>, Class<?>> pair = Pair.of(from, to);
-
-        return Optional.ofNullable((Converter<I, O>) this.getConverterMutableMap().get(pair));
+        return this.getAssignableConverter(from, to);
     }
 
     /**
@@ -177,7 +179,75 @@ public class AdapterManager {
      * @return Converter from {@link I} to {@link O}.
      */
     @SuppressWarnings("unchecked")
-    public <I, O> Converter<I, O> getConverterUnchecked(Class<I> from, Class<O> to) {
+    private <I, O> Optional<Converter<? super I, ? extends O>> getExactConverter(Class<I> from, Class<O> to) {
+        Objects.requireNonNull(from);
+        Objects.requireNonNull(to);
+
+        // Convert primitive types to boxed version.
+        if(from.isPrimitive()) {
+            from = (Class<I>) Primitive.box(from);
+        }
+
+        if(to.isPrimitive()) {
+            to = (Class<O>) Primitive.box(to);
+        }
+
+        Pair<Class<?>, Class<?>> pair = Pair.of(from, to);
+
+        return Optional.ofNullable((Converter<I, O>) this.getConverterMutableMap().get(pair));
+    }
+
+    /**
+     * Gets the converter from any instance assignable to {@link I} to {@link O} or super-types of {@link O}.
+     *
+     * @param from Input type.
+     * @param to   Output type.
+     * @param <I>  Input type.
+     * @param <O>  Output type.
+     * @return Converter from {@link I} to {@link O}.
+     */
+    @SuppressWarnings("unchecked")
+    private <I, O> Optional<Converter<? super I, ? extends O>> getAssignableConverter(Class<I> from, Class<O> to) {
+        Objects.requireNonNull(from);
+        Objects.requireNonNull(to);
+
+        Optional<Converter<? super I, ? extends O>> exactConverter = this.getExactConverter(from, to);
+
+        if(exactConverter.isPresent())
+            return exactConverter;
+
+        List<Class<?>> toSuperTypes = ClassUtil.getSortedSuperTypes(to);
+
+        Map<Pair<Class<?>, Class<?>>, Converter<?, ?>> map = this.getConverterMutableMap();
+
+        for (Map.Entry<Pair<Class<?>, Class<?>>, Converter<?, ?>> pairConverterEntry : map.entrySet()) {
+            Pair<Class<?>, Class<?>> key = pairConverterEntry.getKey();
+            Converter<?, ?> value = pairConverterEntry.getValue();
+
+            // The confuse section of documentation
+            // Only thing that you have to known about this code is that it determines if the converter is valid
+            // This code leads with Covariance and Contravariance
+            // Converter#from is contravariant and Converter#to is covariant
+            if(key._1().isAssignableFrom(from)) { // If the parameter 'from' is assignable to converter@from
+                if(to.isAssignableFrom(key._2())) // If converter@to is assignable from parameter 'to'
+                    return Optional.of((Converter<I, O>) value); // Returns the converter
+            }
+        }
+
+        return Optional.empty();
+    }
+
+    /**
+     * Gets the converter from {@link I} to {@link O}.
+     *
+     * @param from Input type.
+     * @param to   Output type.
+     * @param <I>  Input type.
+     * @param <O>  Output type.
+     * @return Converter from {@link I} to {@link O}.
+     */
+    @SuppressWarnings("unchecked")
+    public <I, O> Converter<? super I, ? extends O> getConverterUnchecked(Class<I> from, Class<O> to) {
         return Require.require(this.getConverter(from, to), "Can't find a converter that converts from '" + from.getCanonicalName() + "' to '" + to.getCanonicalName() + "'!");
     }
 
@@ -232,7 +302,7 @@ public class AdapterManager {
 
         Class[] classes;
 
-        if(toClass == null)
+        if (toClass == null)
             classes = new Class[0];
         else
             classes = new Class[]{toClass};
@@ -270,7 +340,7 @@ public class AdapterManager {
         Objects.requireNonNull(adaptee);
         Objects.requireNonNull(instance);
 
-        if(toClasses == null)
+        if (toClasses == null)
             toClasses = new Class[0];
 
         // Gets the specification of Adapter that adapts 'adaptee' to 'toClasses'
@@ -331,6 +401,33 @@ public class AdapterManager {
      * inherits all {@code relation} classes.
      */
     private Optional<AdapterSpecification<?, ?>> get(Class<?> adaptee, Class<?>[] relation) {
+        return this.getAssignable(adaptee, relation);
+    }
+
+    /**
+     * Gets the {@link AdapterSpecification} that provide the adapter of {@code adaptee} class that
+     * inherits all {@code relation} classes.
+     *
+     * @param adaptee  Adapter class.
+     * @param relation Inheritance relation.
+     * @return {@link AdapterSpecification} that provide the adapter of {@code adaptee} class that
+     * inherits all {@code relation} classes.
+     */
+    private Optional<AdapterSpecification<?, ?>> getExact(Class<?> adaptee, Class<?>[] relation) {
+        return this.getExact(adaptee, relation, true);
+    }
+
+    /**
+     * Gets the {@link AdapterSpecification} that provide the adapter of {@code adaptee} class that
+     * inherits all {@code relation} classes.
+     *
+     * @param adaptee  Adapter class.
+     * @param relation Inheritance relation.
+     * @param cache    Should cache.
+     * @return {@link AdapterSpecification} that provide the adapter of {@code adaptee} class that
+     * inherits all {@code relation} classes.
+     */
+    private Optional<AdapterSpecification<?, ?>> getExact(Class<?> adaptee, Class<?>[] relation, boolean cache) {
         Objects.requireNonNull(adaptee);
         Objects.requireNonNull(relation);
 
@@ -354,6 +451,35 @@ public class AdapterManager {
                 })
                 .findFirst();
 
+    }
+
+    /**
+     * Gets the {@link AdapterSpecification} that provide the adapter of {@code adaptee}, or a
+     * adapter of superclasses of {@code adaptee}, class that inherits all {@code relation}
+     * classes.
+     *
+     * @param adaptee  Adapter class.
+     * @param relation Inheritance relation.
+     * @return {@link AdapterSpecification} that provide the adapter of {@code adaptee} class that
+     * inherits all {@code relation} classes.
+     */
+    @SuppressWarnings("OptionalIsPresent")
+    private Optional<AdapterSpecification<?, ?>> getAssignable(Class<?> adaptee, Class<?>[] relation) {
+        Objects.requireNonNull(adaptee);
+        Objects.requireNonNull(relation);
+
+        Iterator<Class<?>> sortedSuperTypes = ClassUtil.getSortedSuperTypes(adaptee).iterator();
+
+        Optional<AdapterSpecification<?, ?>> exact = this.getExact(adaptee, relation);
+
+        if (exact.isPresent())
+            return exact;
+
+        while (!exact.isPresent() && sortedSuperTypes.hasNext()) {
+            exact = this.getExact(sortedSuperTypes.next(), relation, false);
+        }
+
+        return exact;
     }
 
     /**
@@ -410,4 +536,10 @@ public class AdapterManager {
         return this.converterMap;
     }
 
+    /**
+     * Cleanup {@link #cache Adapter Instance Cache}.
+     */
+    public void cleanupInstanceCache() {
+        this.getMutableCache().clear();
+    }
 }

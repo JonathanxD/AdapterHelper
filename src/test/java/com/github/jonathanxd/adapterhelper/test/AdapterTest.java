@@ -53,5 +53,54 @@ public class AdapterTest {
         Assert.assertEquals(32, adapter.getAge());
     }
 
+    @Test
+    public void testAssignable() {
+        AdapterManager adapterManager = AdapterManager.create();
+
+        AdapterSpecification<SimpleAdapter, OldPerson> adapterSpecification = AdapterSpecification.create(SimpleAdapter::new, SimpleAdapter.class, OldPerson.class);
+
+        adapterManager.register(adapterSpecification);
+
+        adapterManager.registerConverter(Text.class, String.class, TextToStringConverter.INSTANCE);
+
+        class ExtendedOldPerson extends OldPerson {
+
+            private final String[] a;
+
+            public ExtendedOldPerson(String h, int i, String[] a) {
+                super(h, i);
+                this.a = a;
+            }
+
+            public String[] getA() {
+                return this.a.clone();
+            }
+        }
+
+        ExtendedOldPerson extendedOldPerson = new ExtendedOldPerson("Josh", 32, new String[]{"Mary"});
+
+        Person adapter = adapterManager.adaptUnchecked(ExtendedOldPerson.class, extendedOldPerson, Person.class);
+        Person adapter2 = adapterManager.adaptUnchecked(ExtendedOldPerson.class, extendedOldPerson, Person.class);
+
+        Assert.assertEquals("Josh", adapter.getName().getPlainString());
+        Assert.assertEquals(32, adapter.getAge());
+        Assert.assertEquals(adapter, adapter2);
+
+    }
+
+    @SuppressWarnings("OptionalGetWithoutIsPresent")
+    @Test
+    public void testAssignableConverter() {
+        AdapterManager adapterManager = AdapterManager.create();
+
+        adapterManager.registerConverter(Text.class, String.class, TextToStringConverter.INSTANCE);
+
+        Assert.assertEquals(TextToStringConverter.INSTANCE, adapterManager.getConverter(SpecialText.class, String.class).get());
+        Assert.assertEquals(TextToStringConverter.INSTANCE, adapterManager.getConverter(SpecialText.class, CharSequence.class).get());
+
+        Assert.assertFalse(adapterManager.getConverter(String.class, SpecialText.class).isPresent());
+        Assert.assertFalse(adapterManager.getConverter(CharSequence.class, SpecialText.class).isPresent());
+    }
+
 
 }
