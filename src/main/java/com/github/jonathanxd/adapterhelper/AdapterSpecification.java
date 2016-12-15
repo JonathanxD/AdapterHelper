@@ -33,7 +33,7 @@ import java.util.function.BiFunction;
 /**
  * Specification of adapter class.
  */
-public final class AdapterSpecification<T extends Adapter<E>, E> {
+public final class AdapterSpecification<E,T extends Adapter<E>> {
 
     /**
      * Instance factory.
@@ -77,7 +77,7 @@ public final class AdapterSpecification<T extends Adapter<E>, E> {
      * @param <E>          Adaptee type.
      * @return Adapter specification.
      */
-    public static <T extends Adapter<E>, E> AdapterSpecification<T, E> create(BiFunction<E, AdapterManager, T> factory, Class<T> adapterClass, Class<E> adapteeClass) {
+    public static <E, T extends Adapter<E>> AdapterSpecification<E, T> create(BiFunction<E, AdapterManager, T> factory, Class<T> adapterClass, Class<E> adapteeClass) {
         return new AdapterSpecification<>(factory, adapterClass, adapteeClass);
     }
 
@@ -129,8 +129,8 @@ public final class AdapterSpecification<T extends Adapter<E>, E> {
     public boolean equals(Object obj) {
 
         return !(obj == null || obj.getClass() != AdapterSpecification.class)
-                && this.getAdapteeClass().equals(((AdapterSpecification<T, E>) obj).getAdapteeClass())
-                && this.getAdapterClass().equals(((AdapterSpecification<T, E>) obj).getAdapterClass());
+                && this.getAdapteeClass().equals(((AdapterSpecification<E, T>) obj).getAdapteeClass())
+                && this.getAdapterClass().equals(((AdapterSpecification<E, T>) obj).getAdapterClass());
 
     }
 }

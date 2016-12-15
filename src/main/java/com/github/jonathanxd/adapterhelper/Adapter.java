@@ -27,9 +27,24 @@
  */
 package com.github.jonathanxd.adapterhelper;
 
+/**
+ * Adapter base class.
+ *
+ * @param <T> Adaptee type.
+ */
 public interface Adapter<T> {
 
+    /**
+     * Gets the adaptee instance.
+     *
+     * @return Adaptee instance.
+     */
     T getAdapteeInstance();
 
+    /**
+     * Gets the adapter manager.
+     *
+     * @return Adapter manager.
+     */
     AdapterManager getAdapterManager();
 }

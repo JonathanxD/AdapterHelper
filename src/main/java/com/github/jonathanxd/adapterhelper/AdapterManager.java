@@ -33,6 +33,7 @@ import com.github.jonathanxd.iutils.optional.Require;
 import com.github.jonathanxd.iutils.reflection.ClassUtil;
 import com.github.jonathanxd.iutils.type.Primitive;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -83,10 +84,9 @@ public class AdapterManager {
      * Register an {@link AdapterSpecification}.
      *
      * @param adapterSpecification specification to register.
-     * @param <T>                  Adapter type.
      * @param <E>                  Adaptee type.
      */
-    public <T extends Adapter<E>, E> void register(AdapterSpecification<T, E> adapterSpecification) {
+    public <E> void register(AdapterSpecification<E, ? extends Adapter<E>> adapterSpecification) {
         Objects.requireNonNull(adapterSpecification);
 
         this.getAdapterSpecificationMutableSet().add(adapterSpecification);
@@ -179,74 +179,6 @@ public class AdapterManager {
      * @return Converter from {@link I} to {@link O}.
      */
     @SuppressWarnings("unchecked")
-    private <I, O> Optional<Converter<? super I, ? extends O>> getExactConverter(Class<I> from, Class<O> to) {
-        Objects.requireNonNull(from);
-        Objects.requireNonNull(to);
-
-        // Convert primitive types to boxed version.
-        if(from.isPrimitive()) {
-            from = (Class<I>) Primitive.box(from);
-        }
-
-        if(to.isPrimitive()) {
-            to = (Class<O>) Primitive.box(to);
-        }
-
-        Pair<Class<?>, Class<?>> pair = Pair.of(from, to);
-
-        return Optional.ofNullable((Converter<I, O>) this.getConverterMutableMap().get(pair));
-    }
-
-    /**
-     * Gets the converter from any instance assignable to {@link I} to {@link O} or super-types of {@link O}.
-     *
-     * @param from Input type.
-     * @param to   Output type.
-     * @param <I>  Input type.
-     * @param <O>  Output type.
-     * @return Converter from {@link I} to {@link O}.
-     */
-    @SuppressWarnings("unchecked")
-    private <I, O> Optional<Converter<? super I, ? extends O>> getAssignableConverter(Class<I> from, Class<O> to) {
-        Objects.requireNonNull(from);
-        Objects.requireNonNull(to);
-
-        Optional<Converter<? super I, ? extends O>> exactConverter = this.getExactConverter(from, to);
-
-        if(exactConverter.isPresent())
-            return exactConverter;
-
-        List<Class<?>> toSuperTypes = ClassUtil.getSortedSuperTypes(to);
-
-        Map<Pair<Class<?>, Class<?>>, Converter<?, ?>> map = this.getConverterMutableMap();
-
-        for (Map.Entry<Pair<Class<?>, Class<?>>, Converter<?, ?>> pairConverterEntry : map.entrySet()) {
-            Pair<Class<?>, Class<?>> key = pairConverterEntry.getKey();
-            Converter<?, ?> value = pairConverterEntry.getValue();
-
-            // The confuse section of documentation
-            // Only thing that you have to known about this code is that it determines if the converter is valid
-            // This code leads with Covariance and Contravariance
-            // Converter#from is contravariant and Converter#to is covariant
-            if(key._1().isAssignableFrom(from)) { // If the parameter 'from' is assignable to converter@from
-                if(to.isAssignableFrom(key._2())) // If converter@to is assignable from parameter 'to'
-                    return Optional.of((Converter<I, O>) value); // Returns the converter
-            }
-        }
-
-        return Optional.empty();
-    }
-
-    /**
-     * Gets the converter from {@link I} to {@link O}.
-     *
-     * @param from Input type.
-     * @param to   Output type.
-     * @param <I>  Input type.
-     * @param <O>  Output type.
-     * @return Converter from {@link I} to {@link O}.
-     */
-    @SuppressWarnings("unchecked")
     public <I, O> Converter<? super I, ? extends O> getConverterUnchecked(Class<I> from, Class<O> to) {
         return Require.require(this.getConverter(from, to), "Can't find a converter that converts from '" + from.getCanonicalName() + "' to '" + to.getCanonicalName() + "'!");
     }
@@ -286,59 +218,18 @@ public class AdapterManager {
     }
 
     /**
-     * Adapt {@code instance} to a instance assignable to {@code toClass}.
+     * Adapt all instance in {@code iterableInstances} to instances assignable to {@code toClasses}.
      *
-     * @param adaptee  Adaptee class.
-     * @param instance Adaptee instance.
-     * @param toClass  Expected class.
-     * @param <T>      Adapter type.
-     * @param <E>      Adaptee type.
-     * @return Adapter instance.
+     * @param adaptee           Adaptee class.
+     * @param iterableInstances Adaptee instances.
+     * @param toClasses         Expected classes.
+     * @param <E>               Adaptee type.
+     * @return All adapted instances (iteration order) (may be immutable).
      */
-    @SuppressWarnings("unchecked")
-    public <T extends Adapter<E>, E> Optional<T> adapt(Class<? extends E> adaptee, E instance, Class<? super T> toClass) {
+    @SuppressWarnings({"unchecked", "WhileLoopReplaceableByForEach"})
+    public <E> List<Adapter<E>> adaptAllAsAdapter(Class<? super E> adaptee, Iterable<E> iterableInstances, Class<?>[] toClasses) {
         Objects.requireNonNull(adaptee);
-        Objects.requireNonNull(instance);
-
-        Class[] classes;
-
-        if (toClass == null)
-            classes = new Class[0];
-        else
-            classes = new Class[]{toClass};
-
-        return this.adapt(adaptee, instance, classes);
-    }
-
-    /**
-     * Adapt {@code instance} to a instance assignable to {@code toClass}.
-     *
-     * @param adaptee  Adaptee class.
-     * @param instance Adaptee instance.
-     * @param toClass  Expected class.
-     * @param <T>      Adapter type.
-     * @param <E>      Adaptee type.
-     * @return Adapter instance.
-     */
-    @SuppressWarnings("unchecked")
-    public <T extends Adapter<E>, E> T adaptUnchecked(Class<? extends E> adaptee, E instance, Class<? super T> toClass) {
-        return Require.require(this.adapt(adaptee, instance, toClass), "Can't find adapter of '" + adaptee + "' to '" + toClass + "'!");
-    }
-
-    /**
-     * Adapt {@code instance} to a instance assignable to {@code toClasses}.
-     *
-     * @param adaptee   Adaptee class.
-     * @param instance  Adaptee instance.
-     * @param toClasses Expected classes.
-     * @param <T>       Adapter type.
-     * @param <E>       Adaptee type.
-     * @return Adapter instance.
-     */
-    @SuppressWarnings("unchecked")
-    public <T extends Adapter<E>, E> Optional<T> adapt(Class<? extends E> adaptee, E instance, Class<?>[] toClasses) {
-        Objects.requireNonNull(adaptee);
-        Objects.requireNonNull(instance);
+        Objects.requireNonNull(iterableInstances);
 
         if (toClasses == null)
             toClasses = new Class[0];
@@ -349,46 +240,345 @@ public class AdapterManager {
         // Check if is no one specification was found
         if (!adapterSpecificationOpt.isPresent())
             // Returns empty
-            return Optional.empty();
+            return Collections.emptyList();
 
         // Unbox the specification and unsafe cast
-        AdapterSpecification<T, E> adapterSpecification = (AdapterSpecification<T, E>) adapterSpecificationOpt.get();
+        AdapterSpecification<E, ?> adapterSpecification = (AdapterSpecification<E, ?>) adapterSpecificationOpt.get();
 
         // Gets the cache map
         Map<Pair<AdapterSpecification<?, ?>, Object>, Object> cache = this.getMutableCache();
 
-        // Create the pair representing the specification and instance to adapt
-        Pair<AdapterSpecification<?, ?>, Object> pair = Pair.of(adapterSpecification, instance);
+        // Create a list to store adapted instances
+        List<Adapter<E>> adaptedInstances = new ArrayList<>();
 
-        // Check if cache contains an Adapter instance that adapted 'instance'
-        if (cache.containsKey(pair)) {
-            // Returns the cached instance
-            return Optional.of((T) cache.get(pair));
+        // Create the iterator
+        Iterator<E> iterator = iterableInstances.iterator();
+
+        // While iterator has next element
+        while (iterator.hasNext()) {
+            // Gets the element
+            E instance = iterator.next();
+
+            // Create the pair representing the specification and instance to adapt
+            Pair<AdapterSpecification<?, ?>, Object> pair = Pair.of(adapterSpecification, instance);
+
+            // Check if cache contains an Adapter instance that adapted 'instance'
+            if (cache.containsKey(pair)) {
+                // Add the cached instance to list
+                adaptedInstances.add((Adapter<E>) cache.get(pair));
+            } else {
+                // Create adapter instance;
+                Adapter<E> t = adapterSpecification.create(instance, this);
+
+                // Cache the instance
+                cache.put(pair, t);
+
+                // Add the adapted instance to list
+                adaptedInstances.add(t);
+            }
         }
 
-        // Create adapter instance;
-        T t = adapterSpecification.create(instance, this);
+        // Returns the adapted instances.
+        return adaptedInstances;
+    }
 
-        // Cache the instance
-        cache.put(pair, t);
+    /**
+     * Adapt {@code instance} to a instance assignable to {@code toClasses}.
+     *
+     * @param adaptee   Adaptee class.
+     * @param instance  Adaptee instance.
+     * @param toClasses Expected classes.
+     * @param <E>       Adaptee type.
+     * @return Adapter instance.
+     */
+    @SuppressWarnings("unchecked")
+    public <E> Optional<Adapter<E>> adaptAsAdapter(Class<? super E> adaptee, E instance, Class<?>[] toClasses) {
+        List<Adapter<E>> all = this.adaptAllAsAdapter(adaptee, Collections.singleton(instance), toClasses);
 
-        // Returns the instance.
-        return Optional.of(t);
+        if (all.isEmpty())
+            return Optional.empty();
+
+        return Optional.of(all.get(0));
     }
 
     /**
      * Adapt {@code instance} to a instance assignable to {@code toClass}.
      *
+     * @param adaptee  Adaptee class.
+     * @param instance Adaptee instance.
+     * @param toClass  Expected class.
+     * @param <E>      Adaptee type.
+     * @return Adapter instance.
+     */
+    @SuppressWarnings("unchecked")
+    public <E> Optional<Adapter<E>> adaptAsAdapter(Class<? super E> adaptee, E instance, Class<?> toClass) {
+        Objects.requireNonNull(adaptee);
+        Objects.requireNonNull(instance);
+
+        Class[] classes;
+
+        if (toClass == null)
+            classes = new Class[0];
+        else
+            classes = new Class[]{toClass};
+
+        return this.adaptAsAdapter(adaptee, instance, classes);
+    }
+
+    /**
+     * Adapt {@code instance} to a instance assignable to {@code toClasses}.
+     *
      * @param adaptee   Adaptee class.
      * @param instance  Adaptee instance.
      * @param toClasses Expected classes.
-     * @param <T>       Adapter type.
      * @param <E>       Adaptee type.
      * @return Adapter instance.
      */
     @SuppressWarnings("unchecked")
-    public <T extends Adapter<E>, E> T adaptUnchecked(Class<? extends E> adaptee, E instance, Class<?>[] toClasses) {
+    public <E> Adapter<E> adaptUncheckedAsAdapter(Class<? super E> adaptee, E instance, Class<?>[] toClasses) {
         return Require.require(this.adapt(adaptee, instance, toClasses), "Can't find adapter of '" + adaptee + "' to '" + Arrays.toString(toClasses) + "'!");
+    }
+
+    /**
+     * Adapt {@code instance} to a instance assignable to {@code toClasses}.
+     *
+     * @param adaptee   Adaptee class.
+     * @param instance  Adaptee instance.
+     * @param toClass Expected class.
+     * @param <E>       Adaptee type.
+     * @return Adapter instance.
+     */
+    @SuppressWarnings("unchecked")
+    public <E> Adapter<E> adaptUncheckedAsAdapter(Class<? super E> adaptee, E instance, Class<?> toClass) {
+        return Require.require(this.adaptAsAdapter(adaptee, instance, toClass), "Can't find adapter of '" + adaptee + "' to '" + toClass + "'!");
+    }
+
+    /**
+     * Adapt all instance in {@code iterableInstances} to instances assignable to {@code toClass}.
+     *
+     * @param adaptee           Adaptee class.
+     * @param iterableInstances Adaptee instances.
+     * @param toClass           Expected class.
+     * @param <E>               Adaptee type.
+     * @return All adapted instances (iteration order) (may be immutable).
+     */
+    @SuppressWarnings("unchecked")
+    public <E> List<Adapter<E>> adaptAllAsAdapter(Class<? super E> adaptee, Iterable<E> iterableInstances, Class<?> toClass) {
+        Objects.requireNonNull(adaptee);
+        Objects.requireNonNull(iterableInstances);
+
+        Class[] classes;
+
+        if (toClass == null)
+            classes = new Class[0];
+        else
+            classes = new Class[]{toClass};
+
+        return this.adaptAllAsAdapter(adaptee, iterableInstances, classes);
+    }
+
+    /**
+     * Adapt {@code instance} to a instance assignable to {@code toClasses}.
+     *
+     * @param adaptee   Adaptee class.
+     * @param instance  Adaptee instance.
+     * @param toClasses Expected classes.
+     * @param <E>       Adaptee type.
+     *           @param <O> Expected type.
+     * @return Expected instance.
+     */
+    @SuppressWarnings("unchecked")
+    public <E, O> Optional<O> adapt(Class<? super E> adaptee, E instance, Class<?>[] toClasses) {
+        return (Optional<O>) this.adaptAsAdapter(adaptee, instance, toClasses);
+    }
+
+    /**
+     * Adapt {@code instance} to a instance assignable to {@code toClass}.
+     *
+     * @param adaptee  Adaptee class.
+     * @param instance Adaptee instance.
+     * @param toClass  Expected class.
+     * @param <E>      Adaptee type.
+     *           @param <O> Expected type.
+     * @return Expected instance.
+     */
+    @SuppressWarnings("unchecked")
+    public <E, O> Optional<O> adapt(Class<? super E> adaptee, E instance, Class<O> toClass) {
+        return (Optional<O>) this.adaptAsAdapter(adaptee, instance, toClass);
+    }
+
+    /**
+     * Adapt {@code instance} to a instance assignable to {@code toClass}.
+     *
+     * @param adaptee  Adaptee class.
+     * @param instance Adaptee instance.
+     * @param toClass  Expected class.
+     * @param <E>      Adaptee type.
+     *           @param <O> Expected type.
+     * @return Expected instance.
+     */
+    @SuppressWarnings("unchecked")
+    public <E, O> O adaptUnchecked(Class<? super E> adaptee, E instance, Class<O> toClass) {
+        return Require.require(this.adapt(adaptee, instance, toClass), "Can't find adapter of '" + adaptee + "' to '" + toClass + "'!");
+    }
+
+    /**
+     * Adapt {@code instance} to a instance assignable to {@code toClasses}.
+     *
+     * @param adaptee   Adaptee class.
+     * @param instance  Adaptee instance.
+     * @param toClasses Expected classes.
+     * @param <E>       Adaptee type.
+     *           @param <O> Expected type.
+     * @return Expected instance.
+     */
+    @SuppressWarnings("unchecked")
+    public <E, O> O adaptUnchecked(Class<? super E> adaptee, E instance, Class<?>[] toClasses) {
+        return Require.require(this.adapt(adaptee, instance, toClasses), "Can't find adapter of '" + adaptee + "' to '" + Arrays.toString(toClasses) + "'!");
+    }
+
+    /**
+     * Adapt all instance in {@code iterableInstances} to instances assignable to {@code toClass}.
+     *
+     * @param adaptee           Adaptee class.
+     * @param iterableInstances Adaptee instances.
+     * @param toClass           Expected class.
+     * @param <E>               Adaptee type.
+     * @return All adapted instances (iteration order) (may be immutable).
+     */
+    @SuppressWarnings("unchecked")
+    public <E, O> List<O> adaptAll(Class<? super E> adaptee, Iterable<E> iterableInstances, Class<O> toClass) {
+        return (List<O>) this.adaptAllAsAdapter(adaptee, iterableInstances, toClass);
+    }
+
+    /**
+     * Gets the Immutable {@link Set} instance of all registered {@link AdapterSpecification}.
+     *
+     * @return Immutable {@link Set} instance of all registered {@link AdapterSpecification}.
+     */
+    public Set<AdapterSpecification<?, ?>> getAdapterSpecificationSet() {
+        return this.unmodAdapterSpecificationSet;
+    }
+
+    /**
+     * Gets the Immutable {@link Map} of cached adapter instance.
+     *
+     * @return Immutable {@link Map} of cached adapter instance.
+     */
+    public Map<Pair<AdapterSpecification<?, ?>, Object>, Object> getCache() {
+        return this.unmodCache;
+    }
+
+    /**
+     * Gets the Immutable {@link Map} of registered converters.
+     *
+     * @return Immutable {@link Map} of registered converters.
+     */
+    public Map<Pair<Class<?>, Class<?>>, Converter<?, ?>> getConverterMap() {
+        return unmodConverterMap;
+    }
+
+    /**
+     * Gets the Mutable {@link Set} instance of all registered {@link AdapterSpecification}.
+     *
+     * @return Mutable {@link Set} instance of all registered {@link AdapterSpecification}.
+     */
+    protected Set<AdapterSpecification<?, ?>> getAdapterSpecificationMutableSet() {
+        return this.adapterSpecificationSet;
+    }
+
+    /**
+     * Gets the Mutable {@link Map} of cached adapter instance.
+     *
+     * @return Mutable {@link Map} of cached adapter instance.
+     */
+    protected Map<Pair<AdapterSpecification<?, ?>, Object>, Object> getMutableCache() {
+        return this.cache;
+    }
+
+    /**
+     * Gets the Mutable {@link Map} of registered converters.
+     *
+     * @return Mutable {@link Map} of registered converters.
+     */
+    protected Map<Pair<Class<?>, Class<?>>, Converter<?, ?>> getConverterMutableMap() {
+        return this.converterMap;
+    }
+
+    /**
+     * Cleanup {@link #cache Adapter Instance Cache}.
+     */
+    public void cleanupInstanceCache() {
+        this.getMutableCache().clear();
+    }
+
+    /**
+     * Gets the converter from {@link I} to {@link O}.
+     *
+     * @param from Input type.
+     * @param to   Output type.
+     * @param <I>  Input type.
+     * @param <O>  Output type.
+     * @return Converter from {@link I} to {@link O}.
+     */
+    @SuppressWarnings("unchecked")
+    private <I, O> Optional<Converter<? super I, ? extends O>> getExactConverter(Class<I> from, Class<O> to) {
+        Objects.requireNonNull(from);
+        Objects.requireNonNull(to);
+
+        // Convert primitive types to boxed version.
+        if (from.isPrimitive()) {
+            from = (Class<I>) Primitive.box(from);
+        }
+
+        if (to.isPrimitive()) {
+            to = (Class<O>) Primitive.box(to);
+        }
+
+        Pair<Class<?>, Class<?>> pair = Pair.of(from, to);
+
+        return Optional.ofNullable((Converter<I, O>) this.getConverterMutableMap().get(pair));
+    }
+
+    /**
+     * Gets the converter from any instance assignable to {@link I} to {@link O} or super-types of
+     * {@link O}.
+     *
+     * @param from Input type.
+     * @param to   Output type.
+     * @param <I>  Input type.
+     * @param <O>  Output type.
+     * @return Converter from {@link I} to {@link O}.
+     */
+    @SuppressWarnings("unchecked")
+    private <I, O> Optional<Converter<? super I, ? extends O>> getAssignableConverter(Class<I> from, Class<O> to) {
+        Objects.requireNonNull(from);
+        Objects.requireNonNull(to);
+
+        Optional<Converter<? super I, ? extends O>> exactConverter = this.getExactConverter(from, to);
+
+        if (exactConverter.isPresent())
+            return exactConverter;
+
+        List<Class<?>> toSuperTypes = ClassUtil.getSortedSuperTypes(to);
+
+        Map<Pair<Class<?>, Class<?>>, Converter<?, ?>> map = this.getConverterMutableMap();
+
+        for (Map.Entry<Pair<Class<?>, Class<?>>, Converter<?, ?>> pairConverterEntry : map.entrySet()) {
+            Pair<Class<?>, Class<?>> key = pairConverterEntry.getKey();
+            Converter<?, ?> value = pairConverterEntry.getValue();
+
+            // The confuse section of documentation
+            // Only thing that you have to known about this code is that it determines if the converter is valid
+            // This code leads with Covariance and Contravariance
+            // Converter#from is contravariant and Converter#to is covariant
+            if (key._1().isAssignableFrom(from)) { // If the parameter 'from' is assignable to converter@from
+                if (to.isAssignableFrom(key._2())) // If converter@to is assignable from parameter 'to'
+                    return Optional.of((Converter<I, O>) value); // Returns the converter
+            }
+        }
+
+        return Optional.empty();
     }
 
     /**
@@ -480,66 +670,5 @@ public class AdapterManager {
         }
 
         return exact;
-    }
-
-    /**
-     * Gets the Immutable {@link Set} instance of all registered {@link AdapterSpecification}.
-     *
-     * @return Immutable {@link Set} instance of all registered {@link AdapterSpecification}.
-     */
-    public Set<AdapterSpecification<?, ?>> getAdapterSpecificationSet() {
-        return this.unmodAdapterSpecificationSet;
-    }
-
-    /**
-     * Gets the Immutable {@link Map} of cached adapter instance.
-     *
-     * @return Immutable {@link Map} of cached adapter instance.
-     */
-    public Map<Pair<AdapterSpecification<?, ?>, Object>, Object> getCache() {
-        return this.unmodCache;
-    }
-
-    /**
-     * Gets the Immutable {@link Map} of registered converters.
-     *
-     * @return Immutable {@link Map} of registered converters.
-     */
-    public Map<Pair<Class<?>, Class<?>>, Converter<?, ?>> getConverterMap() {
-        return unmodConverterMap;
-    }
-
-    /**
-     * Gets the Mutable {@link Set} instance of all registered {@link AdapterSpecification}.
-     *
-     * @return Mutable {@link Set} instance of all registered {@link AdapterSpecification}.
-     */
-    protected Set<AdapterSpecification<?, ?>> getAdapterSpecificationMutableSet() {
-        return this.adapterSpecificationSet;
-    }
-
-    /**
-     * Gets the Mutable {@link Map} of cached adapter instance.
-     *
-     * @return Mutable {@link Map} of cached adapter instance.
-     */
-    protected Map<Pair<AdapterSpecification<?, ?>, Object>, Object> getMutableCache() {
-        return this.cache;
-    }
-
-    /**
-     * Gets the Mutable {@link Map} of registered converters.
-     *
-     * @return Mutable {@link Map} of registered converters.
-     */
-    protected Map<Pair<Class<?>, Class<?>>, Converter<?, ?>> getConverterMutableMap() {
-        return this.converterMap;
-    }
-
-    /**
-     * Cleanup {@link #cache Adapter Instance Cache}.
-     */
-    public void cleanupInstanceCache() {
-        this.getMutableCache().clear();
     }
 }

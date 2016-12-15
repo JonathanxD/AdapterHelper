@@ -33,13 +33,16 @@ import com.github.jonathanxd.adapterhelper.AdapterSpecification;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Arrays;
+import java.util.List;
+
 public class AdapterTest {
 
     @Test
     public void test() {
         AdapterManager adapterManager = AdapterManager.create();
 
-        AdapterSpecification<SimpleAdapter, OldPerson> adapterSpecification = AdapterSpecification.create(SimpleAdapter::new, SimpleAdapter.class, OldPerson.class);
+        AdapterSpecification<OldPerson, SimpleAdapter> adapterSpecification = AdapterSpecification.create(SimpleAdapter::new, SimpleAdapter.class, OldPerson.class);
 
         adapterManager.register(adapterSpecification);
 
@@ -57,7 +60,7 @@ public class AdapterTest {
     public void testAssignable() {
         AdapterManager adapterManager = AdapterManager.create();
 
-        AdapterSpecification<SimpleAdapter, OldPerson> adapterSpecification = AdapterSpecification.create(SimpleAdapter::new, SimpleAdapter.class, OldPerson.class);
+        AdapterSpecification<OldPerson, SimpleAdapter> adapterSpecification = AdapterSpecification.create(SimpleAdapter::new, SimpleAdapter.class, OldPerson.class);
 
         adapterManager.register(adapterSpecification);
 
@@ -102,5 +105,26 @@ public class AdapterTest {
         Assert.assertFalse(adapterManager.getConverter(CharSequence.class, SpecialText.class).isPresent());
     }
 
+    @Test
+    public void testMulti() {
+        AdapterManager adapterManager = AdapterManager.create();
+
+        AdapterSpecification<OldPerson, SimpleAdapter> adapterSpecification = AdapterSpecification.create(SimpleAdapter::new, SimpleAdapter.class, OldPerson.class);
+
+        adapterManager.register(adapterSpecification);
+
+        adapterManager.registerConverter(Text.class, String.class, TextToStringConverter.INSTANCE);
+
+        OldPerson oldPerson = new OldPerson("Josh", 32);
+        OldPerson oldPerson2 = new OldPerson("Mary", 23);
+
+        List<Person> adapted = adapterManager.adaptAll(OldPerson.class, Arrays.asList(oldPerson, oldPerson2), Person.class);
+
+        Assert.assertEquals("Josh", adapted.get(0).getName().getPlainString());
+        Assert.assertEquals(32, adapted.get(0).getAge());
+
+        Assert.assertEquals("Mary", adapted.get(1).getName().getPlainString());
+        Assert.assertEquals(23, adapted.get(1).getAge());
+    }
 
 }
