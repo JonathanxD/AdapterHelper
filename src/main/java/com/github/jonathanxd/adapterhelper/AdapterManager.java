@@ -224,7 +224,7 @@ public class AdapterManager {
      * @param iterableInstances Adaptee instances.
      * @param toClasses         Expected classes.
      * @param <E>               Adaptee type.
-     * @return All adapted instances (iteration order) (may be immutable).
+     * @return Immutable list of all adapted instances (iteration order).
      */
     @SuppressWarnings({"unchecked", "WhileLoopReplaceableByForEach"})
     public <E> List<Adapter<E>> adaptAllAsAdapter(Class<? super E> adaptee, Iterable<E> iterableInstances, Class<?>[] toClasses) {
@@ -279,7 +279,7 @@ public class AdapterManager {
         }
 
         // Returns the adapted instances.
-        return adaptedInstances;
+        return Collections.unmodifiableList(adaptedInstances);
     }
 
     /**
@@ -342,10 +342,10 @@ public class AdapterManager {
     /**
      * Adapt {@code instance} to a instance assignable to {@code toClasses}.
      *
-     * @param adaptee   Adaptee class.
-     * @param instance  Adaptee instance.
-     * @param toClass Expected class.
-     * @param <E>       Adaptee type.
+     * @param adaptee  Adaptee class.
+     * @param instance Adaptee instance.
+     * @param toClass  Expected class.
+     * @param <E>      Adaptee type.
      * @return Adapter instance.
      */
     @SuppressWarnings("unchecked")
@@ -360,7 +360,7 @@ public class AdapterManager {
      * @param iterableInstances Adaptee instances.
      * @param toClass           Expected class.
      * @param <E>               Adaptee type.
-     * @return All adapted instances (iteration order) (may be immutable).
+     * @return Immutable list of all adapted instances (iteration order).
      */
     @SuppressWarnings("unchecked")
     public <E> List<Adapter<E>> adaptAllAsAdapter(Class<? super E> adaptee, Iterable<E> iterableInstances, Class<?> toClass) {
@@ -378,13 +378,28 @@ public class AdapterManager {
     }
 
     /**
+     * Adapt all instance in {@code iterableInstances} to instances assignable to {@code toClass}.
+     *
+     * @param adaptee           Adaptee class.
+     * @param iterableInstances Adaptee instances.
+     * @param toClass           Expected class.
+     * @param <E>               Adaptee type.
+     * @return Immutable list of all adapted instances (iteration order).
+     */
+    @SuppressWarnings("unchecked")
+    public <E, O> List<O> adaptAll(Class<? super E> adaptee, Iterable<E> iterableInstances, Class<O> toClass) {
+        return (List<O>) this.adaptAllAsAdapter(adaptee, iterableInstances, toClass);
+    }
+
+
+    /**
      * Adapt {@code instance} to a instance assignable to {@code toClasses}.
      *
      * @param adaptee   Adaptee class.
      * @param instance  Adaptee instance.
      * @param toClasses Expected classes.
      * @param <E>       Adaptee type.
-     *           @param <O> Expected type.
+     * @param <O>       Expected type.
      * @return Expected instance.
      */
     @SuppressWarnings("unchecked")
@@ -399,7 +414,7 @@ public class AdapterManager {
      * @param instance Adaptee instance.
      * @param toClass  Expected class.
      * @param <E>      Adaptee type.
-     *           @param <O> Expected type.
+     * @param <O>      Expected type.
      * @return Expected instance.
      */
     @SuppressWarnings("unchecked")
@@ -414,7 +429,7 @@ public class AdapterManager {
      * @param instance Adaptee instance.
      * @param toClass  Expected class.
      * @param <E>      Adaptee type.
-     *           @param <O> Expected type.
+     * @param <O>      Expected type.
      * @return Expected instance.
      */
     @SuppressWarnings("unchecked")
@@ -429,26 +444,12 @@ public class AdapterManager {
      * @param instance  Adaptee instance.
      * @param toClasses Expected classes.
      * @param <E>       Adaptee type.
-     *           @param <O> Expected type.
+     * @param <O>       Expected type.
      * @return Expected instance.
      */
     @SuppressWarnings("unchecked")
     public <E, O> O adaptUnchecked(Class<? super E> adaptee, E instance, Class<?>[] toClasses) {
         return Require.require(this.adapt(adaptee, instance, toClasses), "Can't find adapter of '" + adaptee + "' to '" + Arrays.toString(toClasses) + "'!");
-    }
-
-    /**
-     * Adapt all instance in {@code iterableInstances} to instances assignable to {@code toClass}.
-     *
-     * @param adaptee           Adaptee class.
-     * @param iterableInstances Adaptee instances.
-     * @param toClass           Expected class.
-     * @param <E>               Adaptee type.
-     * @return All adapted instances (iteration order) (may be immutable).
-     */
-    @SuppressWarnings("unchecked")
-    public <E, O> List<O> adaptAll(Class<? super E> adaptee, Iterable<E> iterableInstances, Class<O> toClass) {
-        return (List<O>) this.adaptAllAsAdapter(adaptee, iterableInstances, toClass);
     }
 
     /**
