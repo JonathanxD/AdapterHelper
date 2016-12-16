@@ -1,4 +1,4 @@
-/*
+/**
  *      AdapterHelper - Adapter management helper. <https://github.com/JonathanxD/AdapterHelper>
  *
  *         The MIT License (MIT)
@@ -25,22 +25,27 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.jonathanxd.adapterhelper;
+package com.github.jonathanxd.adapterhelper
 
-import java.util.List;
+@FunctionalInterface
+interface Converter<I: Any, O: Any> {
+    /**
+     * Converts from [I] to [O].
 
-class Util {
-    // I will not use Java 8 here because I want a fast code.
-    public static AdapterSpecification<?, ?> firstAssignable(Class<?>[] relation, List<AdapterSpecification<?, ?>> list) {
-        for (AdapterSpecification<?, ?> adapterSpecification : list) {
-            Class<?> adapterClass = adapterSpecification.getAdapterClass();
+     * @param input   Input.
+     * @param adapter Adapter instance (may be null).
+     * @param manager Adapter Manager.
+     * @return Converted instance (can't be null).
+     */
+    fun convert(input: I, adapter: Adapter<*>?, manager: AdapterManager): O
 
-            for (Class<?> aClass : relation) {
-                if (!aClass.isAssignableFrom(adapterClass))
-                    return adapterSpecification;
-            }
-        }
+    /**
+     * Returns a converter that converts from [O] to [I] (may be
+     * null).
 
-        return null;
+     * @return A converter that converts from [O] to [I] (may be null).
+     */
+    fun revert(): Converter<O, I>? {
+        return null
     }
 }

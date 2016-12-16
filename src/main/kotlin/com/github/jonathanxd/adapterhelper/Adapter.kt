@@ -1,4 +1,4 @@
-/*
+/**
  *      AdapterHelper - Adapter management helper. <https://github.com/JonathanxD/AdapterHelper>
  *
  *         The MIT License (MIT)
@@ -25,36 +25,22 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.jonathanxd.adapterhelper;
+package com.github.jonathanxd.adapterhelper
 
 /**
- * A converter that converts a instance of {@link I} to a instance of {@link O}.
+ * Adapter base interface.
  *
- * The {@link #revert()} may return null if the convert don't support reversion.
- *
- * @param <I> Input.
- * @param <O> Output
+ * @param T Adaptee type.
  */
-@FunctionalInterface
-public interface Converter<I, O> {
+interface Adapter<out T: Any> {
 
     /**
-     * Converts from {@link I} to {@link O}.
-     *
-     * @param input   Input.
-     * @param adapter Adapter instance (may be null).
-     * @param manager Adapter Manager.
-     * @return Converted instance (can't be null).
+     * Adaptee instance.
      */
-    O convert(I input, Adapter<?> adapter, AdapterManager manager);
+    val adapteeInstance: T
 
     /**
-     * Returns a converter that converts from {@link O} to {@link I} (may be
-     * null).
-     *
-     * @return A converter that converts from {@link O} to {@link I} (may be null).
+     * Adapter manager.
      */
-    default Converter<O, I> revert() {
-        return null;
-    }
+    val adapterManager: AdapterManager
 }

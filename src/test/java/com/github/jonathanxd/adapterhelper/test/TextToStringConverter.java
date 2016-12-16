@@ -31,6 +31,8 @@ import com.github.jonathanxd.adapterhelper.Adapter;
 import com.github.jonathanxd.adapterhelper.AdapterManager;
 import com.github.jonathanxd.adapterhelper.Converter;
 
+import org.jetbrains.annotations.NotNull;
+
 public final class TextToStringConverter implements Converter<Text, String> {
 
     public static final TextToStringConverter INSTANCE = new TextToStringConverter();
@@ -39,7 +41,7 @@ public final class TextToStringConverter implements Converter<Text, String> {
     }
 
     @Override
-    public String convert(Text input, Adapter<?> adapter, AdapterManager manager) {
+    public String convert(@NotNull Text input, Adapter<?> adapter, @NotNull AdapterManager manager) {
         return input.getPlainString();
     }
 
@@ -49,13 +51,14 @@ public final class TextToStringConverter implements Converter<Text, String> {
     }
 
     private final static class StringToTextConverter implements Converter<String, Text> {
-        private static final StringToTextConverter INSTANCE = new StringToTextConverter();
+        static final StringToTextConverter INSTANCE = new StringToTextConverter();
 
         private StringToTextConverter() {
         }
 
+        @NotNull
         @Override
-        public Text convert(String input, Adapter<?> adapter, AdapterManager manager) {
+        public Text convert(@NotNull String input, Adapter<?> adapter, @NotNull AdapterManager manager) {
             return new Text(input);
         }
 

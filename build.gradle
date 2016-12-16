@@ -1,16 +1,34 @@
+buildscript {
+    ext.kotlin_version = '1.1-M03'
+    ext.dokka_version = '0.9.10'
+
+    repositories {
+        mavenCentral()
+        maven { url "http://dl.bintray.com/kotlin/kotlin-eap-1.1" }
+    }
+
+
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "org.jetbrains.dokka:dokka-gradle-plugin:${dokka_version}"
+    }
+}
+
 plugins {
-    id 'com.github.hierynomus.license' version '0.11.0'
-    id 'com.github.johnrengelman.shadow' version '1.2.3'
+    id 'com.github.hierynomus.license' version '0.13.1'
+    id 'com.github.johnrengelman.shadow' version '1.2.4'
 }
 
 group 'com.github.jonathanxd'
-version '1.2.1'
+version '1.3.0'
 
 allprojects {
     apply plugin: 'idea'
     apply plugin: 'java'
     apply plugin: 'license'
     apply plugin: 'com.github.johnrengelman.shadow'
+    apply plugin: "kotlin"
+    apply plugin: 'org.jetbrains.dokka'
 
     license {
         header rootProject.file("LICENSE_HEADER")
@@ -22,11 +40,18 @@ defaultTasks 'licenseFormat', 'build', 'test', 'jar', 'shadowJar'
 
 sourceCompatibility = 1.8
 
-allprojects {
-    repositories {
-        mavenCentral()
-        maven { url "https://jitpack.io" }
-    }
+repositories {
+    mavenCentral()
+    maven { url "https://jitpack.io" }
+    maven { url "http://dl.bintray.com/kotlin/kotlin-eap-1.1" }
+}
+
+compileKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+
+compileTestKotlin {
+    kotlinOptions.jvmTarget = "1.8"
 }
 
 // Setup
@@ -44,39 +69,41 @@ subprojects {
     }
 }
 
-allprojects {
-    shadowJar {
-        dependencies {
-            include(dependency("com.github.JonathanxD:JwIUtils"))
-        }
+shadowJar {
+    dependencies {
+        include(dependency("com.github.JonathanxD:JwIUtils"))
     }
 }
 
 // Tasks
-allprojects {
-    jar {
-        from "$rootProject.rootDir/LICENSE"
+dokka {
+    outputFormat = 'javadoc'
+    outputDirectory = javadoc.destinationDir
+}
 
-        manifest {
-            attributes 'Implementation-Title': baseName,
-                    'Implementation-Version': version
-        }
-    }
+jar {
+    from "$rootProject.rootDir/LICENSE"
 
-    task sourcesJar(type: Jar, dependsOn: classes) {
-        classifier = 'sources'
-        from sourceSets.main.allSource
+    manifest {
+        attributes 'Implementation-Title': baseName,
+                'Implementation-Version': version
     }
+}
 
-    task javadocJar(type: Jar, dependsOn: javadoc) {
-        classifier = 'javadoc'
-        from javadoc.destinationDir
-    }
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
 
-    artifacts {
-        archives sourcesJar
-        archives javadocJar
-    }
+task javadocJar(type: Jar, dependsOn: dokka) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+artifacts {
+    archives sourcesJar
+    archives javadocJar
+    archives shadowJar
 }
 
 subprojects {
@@ -90,6 +117,7 @@ subprojects {
 allprojects {
     dependencies {
         compile 'com.github.JonathanxD:JwIUtils:3.3.0'
+        compile "org.jetbrains.kotlin:kotlin-stdlib-jre8:$kotlin_version"
         testCompile group: 'junit', name: 'junit', version: '4.12'
     }
 
@@ -125,6 +153,7 @@ allprojects {
 
         mapping {
             java = 'SLASHSTAR_STYLE'
+            kt = 'JAVADOC_STYLE'
         }
     }
 }

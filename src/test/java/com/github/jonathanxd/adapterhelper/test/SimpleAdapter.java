@@ -30,6 +30,8 @@ package com.github.jonathanxd.adapterhelper.test;
 import com.github.jonathanxd.adapterhelper.Adapter;
 import com.github.jonathanxd.adapterhelper.AdapterManager;
 
+import org.jetbrains.annotations.NotNull;
+
 public class SimpleAdapter implements Person, Adapter<OldPerson> {
 
     private final OldPerson old;
@@ -50,11 +52,13 @@ public class SimpleAdapter implements Person, Adapter<OldPerson> {
         return this.getAdapteeInstance().i();
     }
 
+    @NotNull
     @Override
     public OldPerson getAdapteeInstance() {
         return this.old;
     }
 
+    @NotNull
     @Override
     public AdapterManager getAdapterManager() {
         return this.adapterManager;
