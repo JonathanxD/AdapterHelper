@@ -35,6 +35,7 @@ import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 public class AdapterTest {
 
@@ -127,4 +128,33 @@ public class AdapterTest {
         Assert.assertEquals(23, adapted.get(1).getAge());
     }
 
+    @Test
+    public void testFactoryAdapter() {
+        AdapterManager adapterManager = AdapterManager.create();
+
+        AdapterSpecification<OldAP, AP> spec = AdapterSpecification.create((o, manager) -> new AP(o.getI()), AP.class, OldAP.class);
+
+        adapterManager.register(spec);
+
+        Optional<AP> ap = adapterManager.adapt(OldAP.class, (OldAP) () -> 88, AP.class);
+
+        Assert.assertEquals(88, ap.get().getI());
+    }
+
+
+    public static final class AP {
+        private final int i;
+
+        public AP(int i) {
+            this.i = i;
+        }
+
+        int getI() {
+            return i;
+        }
+    }
+
+    public interface OldAP {
+        int getI();
+    }
 }

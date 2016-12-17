@@ -36,7 +36,7 @@ import java.util.*
  * @param adapterClass Adapter class.
  * @param adapteeClass Adaptee class (target class/class to adapt).
  */
-class AdapterSpecification<E: Any, T : Adapter<E>> private constructor(
+class AdapterSpecification<E: Any, T: Any> private constructor(
         val factory: (E, AdapterManager) -> T,
         val adapterClass: Class<T>,
         val adapteeClass: Class<E>) {
@@ -75,7 +75,7 @@ class AdapterSpecification<E: Any, T : Adapter<E>> private constructor(
          * @return Adapter specification.
          */
         @JvmStatic
-        fun <E: Any, T : Adapter<E>> create(factory: (E, AdapterManager) -> T, adapterClass: Class<T>, adapteeClass: Class<E>): AdapterSpecification<E, T>
+        fun <E: Any, T : Any> create(factory: (E, AdapterManager) -> T, adapterClass: Class<T>, adapteeClass: Class<E>): AdapterSpecification<E, T>
                 = AdapterSpecification(factory, adapterClass, adapteeClass)
 
         /**
@@ -86,7 +86,7 @@ class AdapterSpecification<E: Any, T : Adapter<E>> private constructor(
          * @param <E>          Adaptee type.
          * @return Adapter specification.
          */
-        inline fun <reified E: Any, reified T : Adapter<E>> create(noinline factory: (E, AdapterManager) -> T): AdapterSpecification<E, T>
+        inline fun <reified E: Any, reified T : Any> create(noinline factory: (E, AdapterManager) -> T): AdapterSpecification<E, T>
                 = AdapterSpecification.create(factory, T::class.java, E::class.java)
     }
 

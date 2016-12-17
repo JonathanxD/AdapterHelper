@@ -63,7 +63,7 @@ open class AdapterManager {
      * @param adapterSpecification Specification to register.
      * @param E                    Adaptee type.
      */
-    fun <E : Any> register(adapterSpecification: AdapterSpecification<E, out Adapter<E>>) {
+    fun <E : Any> register(adapterSpecification: AdapterSpecification<E, out Any>) {
         Objects.requireNonNull(adapterSpecification)
 
         this.adapterSpecificationMutableSet.add(adapterSpecification)
@@ -190,7 +190,7 @@ open class AdapterManager {
      * @return Immutable list of all adapted instances (iteration order).
      */
     @Suppress("UNCHECKED_CAST")
-    fun <E : Any> adaptAllAsAdapter(adaptee: Class<in E>, iterableInstances: Iterable<E>, toClasses: Array<Class<*>>?): List<Adapter<E>> {
+    fun <E : Any> adaptAllAsAny(adaptee: Class<in E>, iterableInstances: Iterable<E>, toClasses: Array<Class<*>>?): List<Any> {
         var toClasses = toClasses
 
         if (toClasses == null)
@@ -205,13 +205,13 @@ open class AdapterManager {
             return emptyList()
 
         // Unbox the specification and unsafe cast
-        val adapterSpecification = adapterSpecificationOpt.get() as AdapterSpecification<E, Adapter<E>>
+        val adapterSpecification = adapterSpecificationOpt.get() as AdapterSpecification<E, Any>
 
         // Gets the cache map
         val cache = this.mutableCache
 
         // Create a list to store adapted instances
-        val adaptedInstances = ArrayList<Adapter<E>>()
+        val adaptedInstances = ArrayList<Any>()
 
         // Create the iterator
         val iterator = iterableInstances.iterator()
@@ -227,7 +227,7 @@ open class AdapterManager {
             // Check if cache contains an Adapter instance that adapted 'instance'
             if (cache.containsKey(pair)) {
                 // Add the cached instance to list
-                adaptedInstances.add(cache[pair] as Adapter<E>)
+                adaptedInstances.add(cache[pair] as E)
             } else {
                 // Create adapter instance;
                 val t = adapterSpecification.create(instance, this)
@@ -249,15 +249,88 @@ open class AdapterManager {
      *
      * @param adaptee   Adaptee class.
      * @param instance  Adaptee instance.
+     * @param toClass   Expected class.
+     * @return Any.
+     */
+    @Suppress("UNCHECKED_CAST")
+    fun <E: Any> adaptAllAsAny(adaptee: Class<in E>, iterableInstances: Iterable<E>, toClass: Class<*>?): List<Any> {
+        val classes: Array<Class<*>>
+
+        if (toClass == null)
+            classes = emptyArray()
+        else
+            classes = arrayOf(toClass)
+
+        return this.adaptAllAsAny(adaptee, iterableInstances, classes)
+    }
+
+    /**
+     * Adapt all instance in `iterableInstances` to instances assignable to `toClasses`.
+     *
+     * @param adaptee           Adaptee class.
+     * @param iterableInstances Adaptee instances.
+     * @param toClasses         Expected classes.
+     * @param E                 Adaptee type.
+     * @return Immutable list of all adapted instances (iteration order).
+     */
+    @Suppress("UNCHECKED_CAST")
+    fun <E : Any> adaptAllAsAdapter(adaptee: Class<in E>, iterableInstances: Iterable<E>, toClasses: Array<Class<*>>?): List<Adapter<E>> {
+        return this.adaptAllAsAny(adaptee, iterableInstances, toClasses).map { it as Adapter<E> }
+    }
+
+    /**
+     * Adapt `instance` to a instance assignable to `toClasses`.
+     *
+     * @param adaptee   Adaptee class.
+     * @param instance  Adaptee instance.
+     * @param toClasses Expected classes.
+     * @return Any.
+     */
+    @Suppress("UNCHECKED_CAST")
+    fun <E: Any> adaptAsAny(adaptee: Class<in E>, instance: E, toClasses: Array<Class<*>>): Optional<Any> {
+        val all = this.adaptAllAsAny(adaptee, setOf(instance), toClasses)
+
+        if (all.isEmpty())
+            return Optional.empty()
+
+        return Optional.of(all[0])
+    }
+
+    /**
+     * Adapt `instance` to a instance assignable to `toClasses`.
+     *
+     * @param adaptee   Adaptee class.
+     * @param instance  Adaptee instance.
+     * @param toClass   Expected class.
+     * @return Any.
+     */
+    @Suppress("UNCHECKED_CAST")
+    fun <E: Any> adaptAsAny(adaptee: Class<in E>, instance: E, toClass: Class<*>?): Optional<Any> {
+        val classes: Array<Class<*>>
+
+        if (toClass == null)
+            classes = emptyArray()
+        else
+            classes = arrayOf(toClass)
+
+        return this.adaptAsAny(adaptee, instance, classes)
+    }
+
+    /**
+     * Adapt `instance` to a instance assignable to `toClasses`.
+     *
+     * @param adaptee   Adaptee class.
+     * @param instance  Adaptee instance.
      * @param toClasses Expected classes.
      * @param E         Adaptee type.
      * @return Adapter instance.
      */
+    @Suppress("UNCHECKED_CAST")
     fun <E : Any> adaptAsAdapter(adaptee: Class<in E>, instance: E, toClasses: Array<Class<*>>): Optional<Adapter<E>> {
         val all = this.adaptAllAsAdapter(adaptee, setOf(instance), toClasses)
 
         if (all.isEmpty())
-            return Optional.empty<Adapter<E>>()
+            return Optional.empty()
 
         return Optional.of(all[0])
     }
@@ -318,9 +391,6 @@ open class AdapterManager {
      * @return Immutable list of all adapted instances (iteration order).
      */
     fun <E : Any> adaptAllAsAdapter(adaptee: Class<in E>, iterableInstances: Iterable<E>, toClass: Class<*>?): List<Adapter<E>> {
-        Objects.requireNonNull(adaptee)
-        Objects.requireNonNull(iterableInstances)
-
         val classes: Array<Class<*>>
 
         if (toClass == null)
@@ -343,7 +413,7 @@ open class AdapterManager {
      */
     @Suppress("UNCHECKED_CAST")
     fun <E : Any, O : Any> adaptAll(adaptee: Class<in E>, iterableInstances: Iterable<E>, toClass: Class<O>): List<O> {
-        return this.adaptAllAsAdapter(adaptee, iterableInstances, toClass) as List<O>
+        return this.adaptAllAsAny(adaptee, iterableInstances, toClass) as List<O>
     }
 
 
@@ -359,7 +429,7 @@ open class AdapterManager {
      */
     @Suppress("UNCHECKED_CAST")
     fun <E : Any, O : Any> adapt(adaptee: Class<in E>, instance: E, toClasses: Array<Class<*>>): Optional<O> {
-        return this.adaptAsAdapter(adaptee, instance, toClasses) as Optional<O>
+        return this.adaptAsAny(adaptee, instance, toClasses) as Optional<O>
     }
 
     /**
@@ -374,7 +444,7 @@ open class AdapterManager {
      */
     @Suppress("UNCHECKED_CAST")
     fun <E : Any, O : Any> adapt(adaptee: Class<in E>, instance: E, toClass: Class<O>): Optional<O> {
-        return this.adaptAsAdapter(adaptee, instance, toClass) as Optional<O>
+        return this.adaptAsAny(adaptee, instance, toClass) as Optional<O>
     }
 
     /**
