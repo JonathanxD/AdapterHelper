@@ -79,6 +79,22 @@ class AdapterSpecification<E: Any, T: Any> private constructor(
                 = AdapterSpecification(factory, adapterClass, adapteeClass)
 
         /**
+         * Create adapter specification (No generic constraints for [adapterClass]).
+         *
+         * @param factory      Factory function.
+         * @param adapterClass Adapter class.
+         * @param adapteeClass Adaptee class.
+         * @param <T>          Adapter type.
+         * @param <E>          Adaptee type.
+         * @return Adapter specification.
+         */
+        @Suppress("UNCHECKED_CAST")
+        @JvmStatic
+        fun <E: Any, T : Any> createGeneric(factory: (E, AdapterManager) -> T, adapterClass: Class<*>, adapteeClass: Class<E>): AdapterSpecification<E, T>
+                = AdapterSpecification(factory, adapterClass as Class<T>, adapteeClass)
+
+
+        /**
          * Create adapter specification.
          *
          * @param factory      Factory function.
