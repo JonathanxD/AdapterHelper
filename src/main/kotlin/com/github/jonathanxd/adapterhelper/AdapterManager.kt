@@ -618,8 +618,6 @@ open class AdapterManager {
      * inherits all `relation` classes.
      */
     private fun getExact(adaptee: Class<*>, relation: Array<Class<*>>): Optional<AdapterSpecification<*, *>> {
-        Objects.requireNonNull(adaptee)
-        Objects.requireNonNull(relation)
 
         return Optional.ofNullable(this.adapterSpecificationMutableSet
                 .firstOrNull { adapterSpecification ->
