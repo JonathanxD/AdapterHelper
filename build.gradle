@@ -1,5 +1,5 @@
 buildscript {
-    ext.kotlin_version = '1.1.0-beta-18'
+    ext.kotlin_version = '1.1.0-rc-91'
     ext.dokka_version = '0.9.10'
 
     repositories {
@@ -20,7 +20,7 @@ plugins {
 }
 
 group 'com.github.jonathanxd'
-version '1.5.0-a'
+version '1.5.1'
 
 allprojects {
     apply plugin: 'idea'
@@ -117,7 +117,8 @@ subprojects {
 allprojects {
     dependencies {
         compile 'com.github.JonathanxD:JwIUtils:3.3.0'
-        compile 'com.github.JonathanxD:CodeGenUtil:1.0-a'
+        compile 'com.github.JonathanxD:CodeAPI-BytecodeWriter:3.1.0'
+        compile 'com.github.JonathanxD:CodeGenUtil:1.1-kt-rc'
         compile "org.jetbrains.kotlin:kotlin-stdlib-jre8:$kotlin_version"
         testCompile group: 'junit', name: 'junit', version: '4.12'
     }
