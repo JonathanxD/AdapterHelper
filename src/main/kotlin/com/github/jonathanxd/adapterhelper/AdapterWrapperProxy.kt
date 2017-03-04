@@ -28,50 +28,118 @@
 package com.github.jonathanxd.adapterhelper
 
 import com.github.jonathanxd.codeapi.type.Generic
+import com.github.jonathanxd.codeapi.type.GenericType
 import com.github.jonathanxd.codeapi.type.LoadedCodeType
+import com.github.jonathanxd.codeapi.util.applyType
 import com.github.jonathanxd.codeapi.util.codeType
+import com.github.jonathanxd.codeapi.util.getType
 import com.github.jonathanxd.codeproxy.CodeProxy
 import com.github.jonathanxd.codeproxy.ProxyData
 import com.github.jonathanxd.codeproxy.handler.InvocationHandler
+import java.lang.invoke.MethodHandles
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
+import java.lang.reflect.Type
 
+private val lookup = MethodHandles.lookup()
 
 @Suppress("UNCHECKED_CAST")
-fun <M : Any, T : Any, O> createProxy(base: Class<in M>, wrapped: T, target: Array<Class<*>>, adapterManager: AdapterManager, baseClass: Class<*>? = null): O {
+fun <M : Any, T : Any, O> createProxy(base: Class<in M>,
+                                      wrapped: T, target: Array<Class<*>>,
+                                      adapterManager: AdapterManager,
+                                      baseClass: Class<*>? = null,
+                                      classType: GenericType): O {
     val jWrapped = baseClass ?: wrapped::class.java
 
     validate(jWrapped)
 
-    val input = jWrapped.typeParameters[0].typeName
+    val names = jWrapped.typeParameters.map { it.typeName }
 
-    val ih: InvocationHandler = InvocationHandler { instance: Any, method: Method, args: Array<Any>, proxyData: ProxyData ->
+    val generic = Generic.type(jWrapped.codeType).of(*jWrapped.typeParameters.map { it.codeType }.toTypedArray())
+
+    val ih: InvocationHandler = InvocationHandler { instance: Any, method: Method, args: Array<Any?>, proxyData: ProxyData ->
 
         val mappedArgs = args.toMutableList()
 
-        if (method.typeParameters.isEmpty()) {
-            val parameters = method.parameters
+        val mNames = method.typeParameters.map { it.typeName }
 
-            parameters.forEachIndexed { index, parameter ->
-                if (parameter.parameterizedType.typeName == input)
-                    mappedArgs[index] = (args[index] as AdapterBase<*>).originalInstance
+
+        fun createProxy(type: Type, provider: () -> Any?): M? {
+            val cType = type.codeType
+
+            val anyName: Boolean
+            var filledType = cType
+
+            if (cType is Generic) {
+                val iNames = cType.bounds.map(::getName).filterNotNull().filter { !mNames.contains(it) }
+                anyName = names.any { out -> iNames.any { out == it } }
+
+                iNames.forEach {
+                    filledType = filledType.applyType(it, generic.getType(it, classType)!!)
+                }
+            } else {
+                anyName = false
             }
 
-            val cType = method.genericReturnType.codeType
-
-            if (cType is Generic
+            return if (cType is Generic
                     && cType.isType
-                    && cType.bounds.size == 1
-                    && cType.bounds[0].type.let { it is Generic && it.name == input })
-                return@InvocationHandler createProxy(base, method.invoke(wrapped, *mappedArgs.toTypedArray()) as T, target, adapterManager, (cType.codeType as LoadedCodeType<*>).loadedType)
+                    && anyName) {
+                val provided = provider() ?: return null
 
-
-            if (cType is Generic && cType.name == input)
-                return@InvocationHandler adapterManager.adaptBaseUnchecked(base, method.invoke(wrapped, *mappedArgs.toTypedArray()) as M, target)
-
+                createProxy(base, provided, target, adapterManager, (cType.codeType as LoadedCodeType<*>).loadedType, filledType as GenericType)
+            } else null
         }
 
-        return@InvocationHandler method.invoke(wrapped, *mappedArgs.toTypedArray())
+        fun map(type: Type, input: () -> Any?, isInput: Boolean): Any? {
+            val pType = type.codeType
+
+            if (pType is Generic && !pType.isType && !pType.isWildcard) {
+                val name = pType.name
+
+                val appliedType = pType.applyType(name, generic.getType(name, classType)!!)
+
+                val typesAreEq = appliedType.`is`(base.codeType)
+
+                if (!typesAreEq) {
+                    val inpt = input() ?: return null
+
+                    val inputIsTarget = target.any { it.isInstance(inpt) }
+
+                    if (inputIsTarget)
+                        return (inpt as AdapterBase<*>).originalInstance
+
+                    return adapterManager.adaptBaseUnchecked(base, inpt as M, target)
+                }
+
+
+            }
+
+            val proxy = createProxy(type, input)
+
+            if (proxy != null)
+                return proxy
+
+            return input()
+        }
+
+        val parameters = method.parameters
+
+        parameters.forEachIndexed { index, parameter ->
+            mappedArgs[index] = map(parameter.parameterizedType, { args[index] }, true)
+        }
+
+        return@InvocationHandler map(method.genericReturnType, {
+
+            val declaringClass = method.declaringClass
+
+            if (method.isDefault && declaringClass.isInterface)
+                return@map lookup.`in`(declaringClass)
+                        .unreflectSpecial(method, declaringClass)
+                        .bindTo(instance)
+                        .invokeWithArguments(*mappedArgs.toTypedArray())
+            else
+                return@map method.invoke(wrapped, *mappedArgs.toTypedArray())
+        }, false)
     }
 
 
@@ -83,6 +151,30 @@ fun <M : Any, T : Any, O> createProxy(base: Class<in M>, wrapped: T, target: Arr
 
 }
 
+private fun getName(type: GenericType): String? {
+
+    if (type is Generic)
+        if (type.isWildcard) {
+            if (type.codeType is Generic)
+                return getName(type.codeType as Generic)
+        } else {
+            return type.name
+        }
+
+    return null
+}
+
+private fun getName(bound: GenericType.Bound): String? {
+
+    val type = bound.type
+
+    if (type is GenericType)
+        return getName(type)
+    else
+        return null
+}
+
+
 private fun validate(jClass: Class<*>) {
     if (!jClass.isInterface) {
         try {
@@ -92,8 +184,8 @@ private fun validate(jClass: Class<*>) {
         }
     }
 
-    if (jClass.typeParameters.size != 1)
-        throw IllegalArgumentException("Input class '$jClass' must have only one type parameter!")
+    if (jClass.typeParameters.isEmpty())
+        throw IllegalArgumentException("Input class '$jClass' must have at least one type parameter!")
 
     if (Modifier.isFinal(jClass.modifiers))
         throw IllegalArgumentException("Input class '$jClass' must not be final!")

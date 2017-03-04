@@ -27,6 +27,9 @@
  */
 package com.github.jonathanxd.adapterhelper
 
+import com.github.jonathanxd.codeapi.type.Generic
+import com.github.jonathanxd.codeapi.type.GenericType
+import com.github.jonathanxd.codeapi.util.codeType
 import com.github.jonathanxd.iutils.`object`.Pair
 import com.github.jonathanxd.iutils.map.WeakValueHashMap
 import com.github.jonathanxd.iutils.optional.Require
@@ -240,17 +243,35 @@ open class AdapterManager {
         }
     }
 
-    fun <E : Any> adaptAllAsAny(adaptee: Class<in E>, instances: List<E>, toClasses: Array<Class<*>>): List<Any> =
-            this.adaptAllAsAny(adaptee, instances as Iterable<E>, toClasses) as List<Any>
+    fun <E : Any> adaptAllAsAny(adaptee: Class<in E>, instances: List<E>, toClasses: Array<Class<*>>, type: GenericType): List<Any> =
+            this.adaptAllAsAny(adaptee, instances as Iterable<E>, toClasses, type) as List<Any>
 
-    fun <E : Any> adaptAllAsAny(adaptee: Class<in E>, instances: Set<E>, toClasses: Array<Class<*>>): Set<Any> =
-            this.adaptAllAsAny(adaptee, instances as Iterable<E>, toClasses) as Set<Any>
+    fun <E : Any> adaptAllAsAny(adaptee: Class<in E>, instances: Set<E>, toClasses: Array<Class<*>>, type: GenericType): Set<Any> =
+            this.adaptAllAsAny(adaptee, instances as Iterable<E>, toClasses, type) as Set<Any>
 
-    fun <E : Any> adaptAllAsAny(adaptee: Class<in E>, instances: Collection<E>, toClasses: Array<Class<*>>): Collection<Any> =
-            this.adaptAllAsAny(adaptee, instances as Iterable<E>, toClasses) as Collection<Any>
+    fun <E : Any> adaptAllAsAny(adaptee: Class<in E>, instances: Collection<E>, toClasses: Array<Class<*>>, type: GenericType): Collection<Any> =
+            this.adaptAllAsAny(adaptee, instances as Iterable<E>, toClasses, type) as Collection<Any>
 
     /**
-     * Adapt all instance in `iterableInstances` to instances assignable to `toClasses`.
+     * Adapt all instance in [instances] to instances assignable to [toClasses].
+     *
+     * This method uses **CodeProxy** to proxy the input instance and handle adaptations.
+     *
+     * @param adaptee           Adaptee class.
+     * @param instances         Adaptee instances.
+     * @param toClasses         Expected classes.
+     * @param E                 Adaptee type.
+     * @return Type of the same input type.
+     */
+    @Suppress("UNCHECKED_CAST")
+    fun <E : Any> adaptAllAsAny(adaptee: Class<in E>, instances: Iterable<E>, toClasses: Array<Class<*>>, type: GenericType): Iterable<Any> {
+        return createProxy(adaptee, instances, toClasses, this, null, type)
+    }
+
+    /**
+     * Adapt all instance in [instances] to instances assignable to [toClasses].
+     *
+     * This method uses **CodeProxy** to proxy the input instance and handle adaptations.
      *
      * @param adaptee           Adaptee class.
      * @param instances         Adaptee instances.
@@ -259,18 +280,8 @@ open class AdapterManager {
      * @return Iterable type of the same input type.
      */
     @Suppress("UNCHECKED_CAST")
-    fun <E : Any> adaptAllAsAny(adaptee: Class<in E>, instances: Iterable<E>, toClasses: Array<Class<*>>): Iterable<Any> {
-        /*return when (instances) {
-            is List<*> -> AdapterWrappedList(adaptee, instances as List<E>, this, toClasses)
-            is Set<*> -> AdapterWrappedSet(adaptee, instances as Set<E>, this, toClasses)
-            is Collection<*> -> AdapterWrappedCollection(adaptee, instances as Collection<E>, this, toClasses)
-            else ->
-                if (instances::class.java == Iterable::class.java)
-                    AdapterWrappedIterable(adaptee, instances, this, toClasses)
-                else
-                    throw IllegalArgumentException("Cannot convert Iterable of type ${instances::class.java} to AdapterWrapped")
-        }*/
-        return createProxy(adaptee, instances, toClasses, this)
+    fun <E : Any, V : Any> adaptAllAsAny(adaptee: Class<in E>, instances: Any, toClasses: Array<Class<*>>, type: GenericType): V {
+        return createProxy(adaptee, instances, toClasses, this, null, type)
     }
 
     /**
@@ -282,8 +293,8 @@ open class AdapterManager {
      * @return Any.
      */
     @Suppress("UNCHECKED_CAST")
-    fun <E : Any> adaptAllAsAny(adaptee: Class<in E>, instances: Iterable<E>, toClass: Class<*>?): Iterable<Any> {
-        return this.adaptAllAsAny(adaptee, instances, toClass?.let { arrayOf(it) } ?: emptyArray())
+    fun <E : Any> adaptAllAsAny(adaptee: Class<in E>, instances: Iterable<E>, toClass: Class<*>?, type: GenericType): Iterable<Any> {
+        return this.adaptAllAsAny(adaptee, instances, toClass?.let { arrayOf(it) } ?: emptyArray(), type)
     }
 
     /**
@@ -296,8 +307,8 @@ open class AdapterManager {
      * @return Immutable list of all adapted instances (iteration order).
      */
     @Suppress("UNCHECKED_CAST")
-    fun <E : Any, I : Iterable<Adapter<E>>> adaptAllAsAdapter(adaptee: Class<in E>, instances: I, toClasses: Array<Class<*>>): I {
-        return this.adaptAllAsAny(adaptee, instances as Iterable<E>, toClasses) as I
+    fun <E : Any> adaptAllAsAdapter(adaptee: Class<in E>, instances: Iterable<E>, toClasses: Array<Class<*>>, type: GenericType): Iterable<Adapter<E>> {
+        return this.adaptAllAsAny(adaptee, instances, toClasses, type) as Iterable<Adapter<E>>
     }
 
     /**
@@ -388,22 +399,22 @@ open class AdapterManager {
      * @param E                 Adaptee type.
      * @return Immutable list of all adapted instances (iteration order).
      */
-    fun <E : Any, I : Iterable<Adapter<E>>> adaptAllAsAdapter(adaptee: Class<in E>, instances: I, toClass: Class<*>?): I {
-        return this.adaptAllAsAdapter(adaptee, instances, toClass?.let { arrayOf(it) } ?: emptyArray())
+    fun <E : Any> adaptAllAsAdapter(adaptee: Class<in E>, instances: Iterable<E>, toClass: Class<*>?, type: GenericType): Iterable<Adapter<E>> {
+        return this.adaptAllAsAdapter(adaptee, instances, toClass?.let { arrayOf(it) } ?: emptyArray(), type)
     }
 
 
     @Suppress("UNCHECKED_CAST")
-    fun <E : Any, O : Any> adaptAll(adaptee: Class<in E>, instances: List<E>, toClass: Class<O>): List<O> =
-            this.adaptAll(adaptee, instances as Iterable<E>, toClass) as List<O>
+    fun <E : Any, O: Any> adaptAll(adaptee: Class<in E>, instances: List<E>, toClass: Class<O>, type: GenericType): List<O> =
+            this.adaptAll(adaptee, instances as Iterable<E>, toClass, type) as List<O>
 
     @Suppress("UNCHECKED_CAST")
-    fun <E : Any, O : Any> adaptAll(adaptee: Class<in E>, instances: Set<E>, toClass: Class<O>): Set<O> =
-            this.adaptAll(adaptee, instances as Iterable<E>, toClass) as Set<O>
+    fun <E : Any, O: Any> adaptAll(adaptee: Class<in E>, instances: Set<E>, toClass: Class<O>, type: GenericType): Set<O> =
+            this.adaptAll(adaptee, instances as Iterable<E>, toClass, type) as Set<O>
 
     @Suppress("UNCHECKED_CAST")
-    fun <E : Any, O : Any> adaptAll(adaptee: Class<in E>, instances: Collection<E>, toClass: Class<O>): Collection<O> =
-            this.adaptAll(adaptee, instances as Iterable<E>, toClass) as Collection<O>
+    fun <E : Any, O: Any> adaptAll(adaptee: Class<in E>, instances: Collection<E>, toClass: Class<O>, type: GenericType): Collection<O> =
+            this.adaptAll(adaptee, instances as Iterable<E>, toClass, type) as Collection<O>
 
     /**
      * Adapt all instance in `iterableInstances` to instances assignable to `toClass`.
@@ -415,8 +426,8 @@ open class AdapterManager {
      * @return Immutable list of all adapted instances (iteration order).
      */
     @Suppress("UNCHECKED_CAST")
-    fun <E : Any, O : Any> adaptAll(adaptee: Class<in E>, instances: Iterable<E>, toClass: Class<O>): Iterable<O> {
-        return this.adaptAllAsAny(adaptee, instances, toClass) as Iterable<O>
+    fun <E : Any, O: Any> adaptAll(adaptee: Class<in E>, instances: Iterable<E>, toClass: Class<O>, type: GenericType): Iterable<O> {
+        return this.adaptAllAsAny(adaptee, instances, toClass, type) as Iterable<O>
     }
 
     /**
@@ -433,7 +444,7 @@ open class AdapterManager {
      * @return Expected instance.
      */
     @Suppress("UNCHECKED_CAST")
-    fun <E : Any, O : Any> adaptBase(adaptee: Class<in E>, instance: E, toClasses: Array<Class<*>>): Optional<O> {
+    fun <E : Any, O: Any> adaptBase(adaptee: Class<in E>, instance: E, toClasses: Array<Class<*>>): Optional<O> {
         return this.adaptSingleAsAny(adaptee, instance, toClasses).let {
             if (!it.isPresent && adaptee != instance::class.java)
                 this.adaptSingleAsAny(instance::class.java as Class<in E>, instance, toClasses)
@@ -453,7 +464,7 @@ open class AdapterManager {
      * @return Expected instance.
      */
     @Suppress("UNCHECKED_CAST")
-    fun <E : Any, O : Any> adapt(adaptee: Class<in E>, instance: E, toClasses: Array<Class<*>>): Optional<O> {
+    fun <E : Any, O: Any> adapt(adaptee: Class<in E>, instance: E, toClasses: Array<Class<*>>): Optional<O> {
         return this.adaptSingleAsAny(adaptee, instance, toClasses) as Optional<O>
     }
 
@@ -468,7 +479,7 @@ open class AdapterManager {
      * @return Expected instance.
      */
     @Suppress("UNCHECKED_CAST")
-    fun <E : Any, O : Any> adapt(adaptee: Class<in E>, instance: E, toClass: Class<O>): Optional<O> {
+    fun <E : Any, O: Any> adapt(adaptee: Class<in E>, instance: E, toClass: Class<O>): Optional<O> {
         return this.adaptSingleAsAny(adaptee, instance, arrayOf<Class<*>>(toClass)) as Optional<O>
     }
 
@@ -486,7 +497,7 @@ open class AdapterManager {
      * @return Expected instance.
      */
     @Suppress("UNCHECKED_CAST")
-    fun <E : Any, O : Any> adaptBaseUnchecked(adaptee: Class<in E>, instance: E, toClasses: Array<Class<*>>): O {
+    fun <E : Any, O: Any> adaptBaseUnchecked(adaptee: Class<in E>, instance: E, toClasses: Array<Class<*>>): O {
         return Require.require(this.adaptBase(adaptee, instance, toClasses), "Can't find adapter of '$adaptee' (and of '${instance::class.java}') to '${toClasses.contentToString()}'!")
     }
 
@@ -500,7 +511,7 @@ open class AdapterManager {
      * @param O        Expected type.
      * @return Expected instance.
      */
-    fun <E : Any, O : Any> adaptUnchecked(adaptee: Class<in E>, instance: E, toClass: Class<O>): O {
+    fun <E : Any, O: Any> adaptUnchecked(adaptee: Class<in E>, instance: E, toClass: Class<O>): O {
         return Require.require(this.adapt(adaptee, instance, toClass), "Can't find adapter of '$adaptee' to '$toClass'!")
     }
 
@@ -514,7 +525,8 @@ open class AdapterManager {
      * @param O         Expected type.
      * @return Expected instance.
      */
-    fun <E : Any, O : Any> adaptUnchecked(adaptee: Class<in E>, instance: E, toClasses: Array<Class<*>>): O {
+    @Suppress("UNCHECKED_CAST")
+    fun <E : Any, O: Any> adaptUnchecked(adaptee: Class<in E>, instance: E, toClasses: Array<Class<*>>): O {
         return Require.require(this.adapt(adaptee, instance, toClasses), "Can't find adapter of '" + adaptee + "' to '" + Arrays.toString(toClasses) + "'!")
     }
 

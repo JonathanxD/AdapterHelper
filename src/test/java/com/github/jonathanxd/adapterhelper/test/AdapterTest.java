@@ -27,8 +27,12 @@
  */
 package com.github.jonathanxd.adapterhelper.test;
 
+import com.github.jonathanxd.adapterhelper.Adapter;
 import com.github.jonathanxd.adapterhelper.AdapterManager;
 import com.github.jonathanxd.adapterhelper.AdapterSpecification;
+import com.github.jonathanxd.codeapi.CodeAPI;
+import com.github.jonathanxd.codeapi.type.Generic;
+import com.github.jonathanxd.codeapi.util.CodeTypes;
 import com.github.jonathanxd.iutils.list.PredicateArrayList;
 
 import org.junit.Assert;
@@ -36,9 +40,13 @@ import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
+
+import static com.github.jonathanxd.codeapi.CodeAPI.getJavaType;
 
 public class AdapterTest {
 
@@ -79,18 +87,58 @@ public class AdapterTest {
         oldPersonList.add(new OldPerson("Mary", 19));
         oldPersonList.add(new OldPerson("Mrs", 42));
 
-        List<Person> people = adapterManager.adaptAll(OldPerson.class, oldPersonList, Person.class);
+        List<Person> people = adapterManager.adaptAll(OldPerson.class, oldPersonList, Person.class, Generic.type(getJavaType(List.class)).of(getJavaType(Person.class)));
 
         for (Person person : people) {
             System.out.println(person.getName());
             System.out.println(person.getAge());
         }
 
+        people.forEach(person -> {
+            System.out.println(person.getName());
+            System.out.println(person.getAge());
+        });
+
         Person jerry = adapterManager.adaptUnchecked(OldPerson.class, new OldPerson("Jerry", 32), Person.class);
 
         people.add(jerry);
 
         OldPerson oldPerson = oldPersonList.get(3);
+
+        System.out.println(oldPerson.h());
+    }
+
+    @Test
+    public void testMap() {
+        AdapterManager adapterManager = AdapterManager.create();
+
+        AdapterSpecification<OldPerson, SimpleAdapter> adapterSpecification = AdapterSpecification.create(SimpleAdapter::new, SimpleAdapter.class, OldPerson.class);
+
+        adapterManager.register(adapterSpecification);
+
+        adapterManager.registerConverter(Text.class, String.class, TextToStringConverter.INSTANCE);
+
+        Map<OldPerson, OldPerson> oldPersonMap = new HashMap<>();
+
+        oldPersonMap.put(new OldPerson("Josh", 32), new OldPerson("Mary", 19));
+        oldPersonMap.put(new OldPerson("Rafaela", 27), new OldPerson("Carl", 28));
+
+        Map<Person, Person> personMap = adapterManager.adaptAllAsAny(OldPerson.class, oldPersonMap, new Class<?>[]{Person.class}, Generic.type(CodeTypes.getCodeType(Map.class)).of(getJavaType(Person.class), getJavaType(Person.class)));
+
+        personMap.forEach((person, person2) -> {
+            System.out.println("Person[name=" + person.getName() + ", age=" + person.getAge() + "] -> Person[name=" + person2.getName() + ", age=" + person2.getAge() + "]");
+        });
+
+        personMap.forEach((person, person2) -> {
+            System.out.println("Person[name=" + person.getName() + ", age=" + person.getAge() + "] -> Person[name=" + person2.getName() + ", age=" + person2.getAge() + "]");
+        });
+
+        Person jerry = adapterManager.adaptUnchecked(OldPerson.class, new OldPerson("Jerry", 32), Person.class);
+        Person creeper = adapterManager.adaptUnchecked(OldPerson.class, new OldPerson("Creeper", 44), Person.class);
+
+        personMap.put(jerry, creeper);
+
+        @SuppressWarnings("unchecked") OldPerson oldPerson = oldPersonMap.get(((Adapter<OldPerson>) jerry).getOriginalInstance());
 
         System.out.println(oldPerson.h());
     }
@@ -157,7 +205,7 @@ public class AdapterTest {
         OldPerson oldPerson = new OldPerson("Josh", 32);
         OldPerson oldPerson2 = new OldPerson("Mary", 23);
 
-        List<Person> adapted = adapterManager.adaptAll(OldPerson.class, Arrays.asList(oldPerson, oldPerson2), Person.class);
+        List<Person> adapted = adapterManager.adaptAll(OldPerson.class, Arrays.asList(oldPerson, oldPerson2), Person.class, Generic.type(getJavaType(List.class)).of(getJavaType(Person.class)));
 
         Assert.assertEquals("Josh", adapted.get(0).getName().getPlainString());
         Assert.assertEquals(32, adapted.get(0).getAge());
