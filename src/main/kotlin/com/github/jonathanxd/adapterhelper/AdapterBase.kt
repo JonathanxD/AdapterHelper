@@ -27,25 +27,16 @@
  */
 package com.github.jonathanxd.adapterhelper
 
-@FunctionalInterface
-interface Converter<I: Any, O: Any> {
-    /**
-     * Converts from [I] to [O].
 
-     * @param input   Input.
-     * @param adapter Adapter instance (may be null).
-     * @param manager Adapter Manager.
-     * @return Converted instance (can't be null).
-     */
-    fun convert(input: I, adapter: Adapter<*>?, manager: AdapterManager): O
+/**
+ * Indicates a base adapter, if the class do not extends [Adapter] class it indicates that this class
+ * only converts the instance to another.
+ */
+interface AdapterBase<out T : Any> {
 
     /**
-     * Returns a converter that converts from [O] to [I] (may be
-     * null).
-
-     * @return A converter that converts from [O] to [I] (may be null).
+     * Original instance, may be the cached instance or a created instance.
      */
-    fun revert(): Converter<O, I>? {
-        return null
-    }
+    val originalInstance: T
+
 }

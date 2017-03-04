@@ -3,7 +3,7 @@
  *
  *         The MIT License (MIT)
  *
- *      Copyright (c) 2016 TheRealBuggy/JonathanxD (https://github.com/JonathanxD/ & https://github.com/TheRealBuggy/) <jonathan.scripter@programmer.net>
+ *      Copyright (c) 2017 TheRealBuggy/JonathanxD (https://github.com/JonathanxD/ & https://github.com/TheRealBuggy/) <jonathan.scripter@programmer.net>
  *      Copyright (c) contributors
  *
  *
@@ -62,5 +62,11 @@ public class SimpleAdapter implements Person, Adapter<OldPerson> {
     @Override
     public AdapterManager getAdapterManager() {
         return this.adapterManager;
+    }
+
+    @NotNull
+    @Override
+    public OldPerson getOriginalInstance() {
+        return (OldPerson) DefaultImpls.getOriginalInstance(this);
     }
 }

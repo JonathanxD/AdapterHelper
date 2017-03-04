@@ -3,7 +3,7 @@
  *
  *         The MIT License (MIT)
  *
- *      Copyright (c) 2016 TheRealBuggy/JonathanxD (https://github.com/JonathanxD/ & https://github.com/TheRealBuggy/) <jonathan.scripter@programmer.net>
+ *      Copyright (c) 2017 TheRealBuggy/JonathanxD (https://github.com/JonathanxD/ & https://github.com/TheRealBuggy/) <jonathan.scripter@programmer.net>
  *      Copyright (c) contributors
  *
  *
@@ -29,13 +29,16 @@ package com.github.jonathanxd.adapterhelper.test;
 
 import com.github.jonathanxd.adapterhelper.AdapterManager;
 import com.github.jonathanxd.adapterhelper.AdapterSpecification;
+import com.github.jonathanxd.iutils.list.PredicateArrayList;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 public class AdapterTest {
 
@@ -55,6 +58,41 @@ public class AdapterTest {
 
         Assert.assertEquals("Josh", adapter.getName().getPlainString());
         Assert.assertEquals(32, adapter.getAge());
+    }
+
+    @Test
+    public void testAll() {
+        AdapterManager adapterManager = AdapterManager.create();
+
+        AdapterSpecification<OldPerson, SimpleAdapter> adapterSpecification = AdapterSpecification.create(SimpleAdapter::new, SimpleAdapter.class, OldPerson.class);
+
+        adapterManager.register(adapterSpecification);
+
+        adapterManager.registerConverter(Text.class, String.class, TextToStringConverter.INSTANCE);
+
+        List<OldPerson> oldPersonList = new MyPredicateArrayList<>(oldPerson -> {
+            System.out.println("[In -> " + oldPerson.h() + "]");
+            return true;
+        });
+
+        oldPersonList.add(new OldPerson("Josh", 32));
+        oldPersonList.add(new OldPerson("Mary", 19));
+        oldPersonList.add(new OldPerson("Mrs", 42));
+
+        List<Person> people = adapterManager.adaptAll(OldPerson.class, oldPersonList, Person.class);
+
+        for (Person person : people) {
+            System.out.println(person.getName());
+            System.out.println(person.getAge());
+        }
+
+        Person jerry = adapterManager.adaptUnchecked(OldPerson.class, new OldPerson("Jerry", 32), Person.class);
+
+        people.add(jerry);
+
+        OldPerson oldPerson = oldPersonList.get(3);
+
+        System.out.println(oldPerson.h());
     }
 
     @Test
@@ -142,6 +180,10 @@ public class AdapterTest {
     }
 
 
+    public interface OldAP {
+        int getI();
+    }
+
     public static final class AP {
         private final int i;
 
@@ -154,7 +196,22 @@ public class AdapterTest {
         }
     }
 
-    public interface OldAP {
-        int getI();
+    public static class MyPredicateArrayList<E> extends PredicateArrayList<E> {
+
+        public MyPredicateArrayList(int initialCapacity, Predicate<E> predicate) {
+            super(initialCapacity, predicate);
+        }
+
+        public MyPredicateArrayList() {
+            super(e -> true);
+        }
+
+        public MyPredicateArrayList(Predicate<E> predicate) {
+            super(predicate);
+        }
+
+        public MyPredicateArrayList(Collection<? extends E> c, Predicate<E> predicate) {
+            super(c, predicate);
+        }
     }
 }

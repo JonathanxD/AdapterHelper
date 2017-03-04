@@ -3,7 +3,7 @@
  *
  *         The MIT License (MIT)
  *
- *      Copyright (c) 2016 TheRealBuggy/JonathanxD (https://github.com/JonathanxD/ & https://github.com/TheRealBuggy/) <jonathan.scripter@programmer.net>
+ *      Copyright (c) 2017 TheRealBuggy/JonathanxD (https://github.com/JonathanxD/ & https://github.com/TheRealBuggy/) <jonathan.scripter@programmer.net>
  *      Copyright (c) contributors
  *
  *
@@ -32,7 +32,7 @@ package com.github.jonathanxd.adapterhelper
  *
  * @param T Adaptee type.
  */
-interface Adapter<out T: Any> {
+interface Adapter<out T: Any> : AdapterBase<T> {
 
     /**
      * Adaptee instance.
@@ -43,4 +43,7 @@ interface Adapter<out T: Any> {
      * Adapter manager.
      */
     val adapterManager: AdapterManager
+
+    override val originalInstance: T
+        get() = this.adapteeInstance
 }
