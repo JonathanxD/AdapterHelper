@@ -105,8 +105,9 @@ fun <M : Any, T : Any, O> createProxy(base: Class<in M>,
 
                     val inputIsTarget = target.any { it.isInstance(inpt) }
 
-                    if (inputIsTarget)
-                        return (inpt as AdapterBase<*>).originalInstance
+                    if (inputIsTarget) {
+                        return (inpt as? AdapterBase<*>)?.originalInstance ?: adapterManager.convertUnchecked(inpt::class.java as Class<Any>, base as Class<Any>, inpt, null)
+                    }
 
                     return adapterManager.adaptBaseUnchecked(base, inpt as M, target)
                 }
