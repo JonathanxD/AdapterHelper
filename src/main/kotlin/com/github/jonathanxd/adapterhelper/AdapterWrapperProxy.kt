@@ -36,12 +36,23 @@ import com.github.jonathanxd.codeapi.util.getType
 import com.github.jonathanxd.codeproxy.CodeProxy
 import com.github.jonathanxd.codeproxy.ProxyData
 import com.github.jonathanxd.codeproxy.handler.InvocationHandler
+import com.github.jonathanxd.codeproxy.info.MethodInfo
 import java.lang.invoke.MethodHandles
-import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import java.lang.reflect.Type
 
 private val lookup = MethodHandles.lookup()
+
+fun privateLookup(declaringClass: Class<*>): MethodHandles.Lookup {
+    val constructor = MethodHandles.Lookup::class.java.getDeclaredConstructor(Class::class.java, Int::class.javaPrimitiveType)
+    if (!constructor.isAccessible) {
+        constructor.isAccessible = true
+    }
+
+    return constructor.newInstance(declaringClass, MethodHandles.Lookup.PRIVATE)
+}
+
+// Requires CodeAPI and CodeProxy
 
 @Suppress("UNCHECKED_CAST")
 fun <M : Any, T : Any, O> createProxy(base: Class<in M>,
@@ -57,9 +68,10 @@ fun <M : Any, T : Any, O> createProxy(base: Class<in M>,
 
     val generic = Generic.type(jWrapped.codeType).of(*jWrapped.typeParameters.map { it.codeType }.toTypedArray())
 
-    val ih: InvocationHandler = InvocationHandler { instance: Any, method: Method, args: Array<Any?>, proxyData: ProxyData ->
+    val ih: InvocationHandler = InvocationHandler { instance: Any, methodInfo: MethodInfo, args: Array<Any?>, _: ProxyData ->
 
         val mappedArgs = args.toMutableList()
+        val method = methodInfo.declaringClass.getDeclaredMethod(methodInfo.name, *methodInfo.parameterTypes.toTypedArray())
 
         val mNames = method.typeParameters.map { it.typeName }
 
@@ -133,12 +145,18 @@ fun <M : Any, T : Any, O> createProxy(base: Class<in M>,
 
             val declaringClass = method.declaringClass
 
-            if (method.isDefault && declaringClass.isInterface)
-                return@map lookup.`in`(declaringClass)
-                        .unreflectSpecial(method, declaringClass)
+            /*if (method.isDefault && declaringClass.isInterface) { << TODO: Temp
+                val cl: Class<*> = if (instance::class.java != declaringClass) {
+                    val superType = instance::class.java.superclass
+                    if(superType == declaringClass || superType.hasSuperclass(declaringClass)) superType
+                    else instance::class.java.interfaces.first { it == declaringClass || it.hasSuperclass(declaringClass) }
+                } else instance::class.java
+
+                return@map methodInfo
+                        .resolveSpecialOrFail(cl, instance::class.java)
                         .bindTo(instance)
                         .invokeWithArguments(*mappedArgs.toTypedArray())
-            else
+            } else*/
                 return@map method.invoke(wrapped, *mappedArgs.toTypedArray())
         }, false)
     }
@@ -150,6 +168,12 @@ fun <M : Any, T : Any, O> createProxy(base: Class<in M>,
     } else
         CodeProxy.newProxyInstance(jWrapped.classLoader ?: CodeProxy::class.java.classLoader, arrayOf(jWrapped), ih)) as O
 
+}
+
+private fun Class<*>.hasSuperclass(type: Class<*>): Boolean {
+    if (this.superclass != null && (this.superclass == type || this.superclass.hasSuperclass(type))) return true
+    if (this.interfaces.any { it == type || it.hasSuperclass(type) }) return true
+    return false
 }
 
 private fun getName(type: GenericType): String? {
