@@ -27,7 +27,8 @@
  */
 package com.github.jonathanxd.adapterhelper
 
-import java.util.*
+import com.github.jonathanxd.adapterhelper.implgen.AdapterImplGen
+import java.util.Objects
 
 /**
  * Specification of adapter class.
@@ -35,11 +36,18 @@ import java.util.*
  * @param factory Adapter Instance Factory.
  * @param adapterClass Adapter class.
  * @param adapteeClass Adaptee class (target class/class to adapt).
+ * @param E Adaptee type
+ * @param T Adapter type.
  */
-class AdapterSpecification<E: Any, T: Any> private constructor(
+class AdapterSpecification<E : Any, T : Any> private constructor(
         val factory: (E, AdapterManager) -> T,
         val adapterClass: Class<T>,
         val adapteeClass: Class<E>) {
+
+    /**
+     * True if this adapter [instance] should be strong cached.
+     */
+    fun strongCache(instance: T) = instance::class.java.hasExplicitOrImplicitAnnotation(StrongCache::class.java)
 
     /**
      * Create the adapter class instance.
@@ -75,7 +83,7 @@ class AdapterSpecification<E: Any, T: Any> private constructor(
          * @return Adapter specification.
          */
         @JvmStatic
-        fun <E: Any, T : Any> create(factory: (E, AdapterManager) -> T, adapterClass: Class<T>, adapteeClass: Class<E>): AdapterSpecification<E, T>
+        fun <E : Any, T : Any> create(factory: (E, AdapterManager) -> T, adapterClass: Class<T>, adapteeClass: Class<E>): AdapterSpecification<E, T>
                 = AdapterSpecification(factory, adapterClass, adapteeClass)
 
         /**
@@ -90,9 +98,28 @@ class AdapterSpecification<E: Any, T: Any> private constructor(
          */
         @Suppress("UNCHECKED_CAST")
         @JvmStatic
-        fun <E: Any, T : Any> createGeneric(factory: (E, AdapterManager) -> T, adapterClass: Class<*>, adapteeClass: Class<E>): AdapterSpecification<E, T>
+        fun <E : Any, T : Any> createGeneric(factory: (E, AdapterManager) -> T, adapterClass: Class<*>, adapteeClass: Class<E>): AdapterSpecification<E, T>
                 = AdapterSpecification(factory, adapterClass as Class<T>, adapteeClass)
 
+        /**
+         * Creates an adapter specification using [AdapterImplGen] to create adapter class.
+         *
+         * Requires CodeAPI, CodeAPI-BytecodeWriter and CodeGenUtil
+         *
+         * @param adapterInterface Interface which adapts [adapteeClass].
+         * @param adapterClass Adapter which defines the adapt standard.
+         * @param adapteeClass Adapted class
+         * @return Specification.
+         */
+        @JvmStatic
+        fun <E : Any, T : Any> createFromInterface(adapterInterface: Class<out T>, adapterClass: Class<T>, adapteeClass: Class<E>): AdapterSpecification<E, T> {
+            val ctr = AdapterImplGen.genImpl(adapterInterface, adapteeClass).getDeclaredConstructor(adapteeClass, AdapterManager::class.java)
+
+            return create({ e, manager ->
+                @Suppress("UNCHECKED_CAST")
+                ctr.newInstance(e, manager)
+            }, adapterClass, adapteeClass)
+        }
 
         /**
          * Create adapter specification.
@@ -102,7 +129,7 @@ class AdapterSpecification<E: Any, T: Any> private constructor(
          * @param <E>          Adaptee type.
          * @return Adapter specification.
          */
-        inline fun <reified E: Any, reified T : Any> create(noinline factory: (E, AdapterManager) -> T): AdapterSpecification<E, T>
+        inline fun <reified E : Any, reified T : Any> create(noinline factory: (E, AdapterManager) -> T): AdapterSpecification<E, T>
                 = AdapterSpecification.create(factory, T::class.java, E::class.java)
     }
 

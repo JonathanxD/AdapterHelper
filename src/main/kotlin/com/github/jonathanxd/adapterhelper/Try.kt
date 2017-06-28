@@ -27,22 +27,10 @@
  */
 package com.github.jonathanxd.adapterhelper
 
-/**
- * Adapter base interface.
- *
- * @param T Adaptee type.
- */
-interface Adapter<out T : Any> : AdapterBase<T> {
-
-    /**
-     * Adaptee instance.
-     */
-    val adapteeInstance: T
-        get() = this.originalInstance
-
-    /**
-     * Adapter manager.
-     */
-    val adapterManager: AdapterManager
-
+inline fun <T> Try(func: () -> T): Pair<T?, Throwable?> {
+    try {
+        return func() to null
+    } catch (t: Throwable) {
+        return null to t
+    }
 }

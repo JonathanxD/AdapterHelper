@@ -30,23 +30,21 @@ package com.github.jonathanxd.adapterhelper.test;
 import com.github.jonathanxd.adapterhelper.Adapter;
 import com.github.jonathanxd.adapterhelper.AdapterManager;
 import com.github.jonathanxd.adapterhelper.AdapterSpecification;
-import com.github.jonathanxd.codeapi.CodeAPI;
-import com.github.jonathanxd.codeapi.type.Generic;
-import com.github.jonathanxd.codeapi.util.CodeTypes;
+import com.github.jonathanxd.iutils.collection.CollectionUtils;
 import com.github.jonathanxd.iutils.list.PredicateArrayList;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
-
-import static com.github.jonathanxd.codeapi.CodeAPI.getJavaType;
 
 public class AdapterTest {
 
@@ -87,7 +85,7 @@ public class AdapterTest {
         oldPersonList.add(new OldPerson("Mary", 19));
         oldPersonList.add(new OldPerson("Mrs", 42));
 
-        List<Person> people = adapterManager.adaptAll(OldPerson.class, oldPersonList, Person.class, Generic.type(getJavaType(List.class)).of(getJavaType(Person.class)));
+        List<Person> people = adapterManager.createAdapterList(OldPerson.class, oldPersonList, Person.class);
 
         for (Person person : people) {
             System.out.println(person.getName());
@@ -106,10 +104,29 @@ public class AdapterTest {
         OldPerson oldPerson = oldPersonList.get(3);
 
         System.out.println(oldPerson.h());
+
+        people.stream()
+                .map(Person::getName)
+                .map(Text::getPlainString)
+                .map(s -> s + " hey").forEach(System.out::println);
+
+        Person[] persons = new Person[people.size()];
+
+        Person[] array = people.toArray(persons);
+
+        Object[] objects = people.toArray();
+
+        for (Object object : objects) {
+            System.out.println("Obj: " + ((Person) object).getName());
+        }
+
+        for (Person r : array) {
+            System.out.println("Obj: " + (r).getName());
+        }
     }
 
     @Test
-    public void testMap() {
+    public void testMap() { // ≃ 3.4s
         AdapterManager adapterManager = AdapterManager.create();
 
         AdapterSpecification<OldPerson, SimpleAdapter> adapterSpecification = AdapterSpecification.create(SimpleAdapter::new, SimpleAdapter.class, OldPerson.class);
@@ -123,7 +140,10 @@ public class AdapterTest {
         oldPersonMap.put(new OldPerson("Josh", 32), new OldPerson("Mary", 19));
         oldPersonMap.put(new OldPerson("Rafaela", 27), new OldPerson("Carl", 28));
 
-        Map<Person, Person> personMap = adapterManager.adaptAllAsAny(OldPerson.class, oldPersonMap, new Class<?>[]{Person.class}, Generic.type(CodeTypes.getCodeType(Map.class)).of(getJavaType(Person.class), getJavaType(Person.class)));
+        Map<Person, Person> personMap = adapterManager.createAdapterMap(
+                OldPerson.class, OldPerson.class,
+                oldPersonMap,
+                Person.class, Person.class);
 
         personMap.forEach((person, person2) -> {
             System.out.println("Person[name=" + person.getName() + ", age=" + person.getAge() + "] -> Person[name=" + person2.getName() + ", age=" + person2.getAge() + "]");
@@ -137,6 +157,8 @@ public class AdapterTest {
         Person creeper = adapterManager.adaptUnchecked(OldPerson.class, new OldPerson("Creeper", 44), Person.class);
 
         personMap.put(jerry, creeper);
+
+        personMap.entrySet().stream().map(Map.Entry::getKey).mapToInt(Person::getAge).forEach(System.out::println);
 
         @SuppressWarnings("unchecked") OldPerson oldPerson = oldPersonMap.get(((Adapter<OldPerson>) jerry).getOriginalInstance());
 
@@ -205,7 +227,7 @@ public class AdapterTest {
         OldPerson oldPerson = new OldPerson("Josh", 32);
         OldPerson oldPerson2 = new OldPerson("Mary", 23);
 
-        List<Person> adapted = adapterManager.adaptAll(OldPerson.class, Arrays.asList(oldPerson, oldPerson2), Person.class, Generic.type(getJavaType(List.class)).of(getJavaType(Person.class)));
+        List<Person> adapted = adapterManager.createAdapterList(OldPerson.class, Arrays.asList(oldPerson, oldPerson2), Person.class);
 
         Assert.assertEquals("Josh", adapted.get(0).getName().getPlainString());
         Assert.assertEquals(32, adapted.get(0).getAge());

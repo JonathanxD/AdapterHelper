@@ -27,22 +27,41 @@
  */
 package com.github.jonathanxd.adapterhelper
 
-/**
- * Adapter base interface.
- *
- * @param T Adaptee type.
- */
-interface Adapter<out T : Any> : AdapterBase<T> {
+import java.lang.reflect.AnnotatedElement
 
-    /**
-     * Adaptee instance.
-     */
-    val adapteeInstance: T
-        get() = this.originalInstance
-
-    /**
-     * Adapter manager.
-     */
-    val adapterManager: AdapterManager
-
+fun Class<*>.getExplicitAndImplicitAnnotations(): Set<Annotation> {
+    return mutableSetOf<Annotation>().also {
+        this.getExplicitAndImplicitAnnotations(it)
+    }
 }
+
+fun AnnotatedElement.getExplicitAndImplicitAnnotations(): Set<Annotation> {
+    return mutableSetOf<Annotation>().also {
+        this.getExplicitAndImplicitAnnotations(it)
+    }
+}
+
+private fun Class<*>.getExplicitAndImplicitAnnotations(set: MutableSet<Annotation>) {
+    (this as AnnotatedElement).getExplicitAndImplicitAnnotations(set)
+    this.superclass?.getExplicitAndImplicitAnnotations(set)
+    this.interfaces.forEach { it.getExplicitAndImplicitAnnotations(set) }
+}
+
+private fun AnnotatedElement.getExplicitAndImplicitAnnotations(set: MutableSet<Annotation>) {
+    this.annotations.forEach {
+        if(!set.contains(it)) {
+            set += it
+            it.annotationClass.java.getExplicitAndImplicitAnnotations(set)
+        }
+    }
+}
+
+fun Class<*>.hasExplicitOrImplicitAnnotation(type: Class<out Annotation>): Boolean {
+    return this.getExplicitAndImplicitAnnotations().any { it.annotationClass.java == type }
+}
+
+
+fun AnnotatedElement.hasExplicitOrImplicitAnnotation(type: Class<out Annotation>): Boolean {
+    return this.getExplicitAndImplicitAnnotations().any { it.annotationClass.java == type }
+}
+

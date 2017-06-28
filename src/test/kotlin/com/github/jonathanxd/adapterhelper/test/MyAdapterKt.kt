@@ -25,24 +25,22 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.jonathanxd.adapterhelper
+package com.github.jonathanxd.adapterhelper.test
 
-/**
- * Adapter base interface.
- *
- * @param T Adaptee type.
- */
-interface Adapter<out T : Any> : AdapterBase<T> {
+import com.github.jonathanxd.adapterhelper.Adapter
+import com.github.jonathanxd.adapterhelper.implgen.Field
+import com.github.jonathanxd.adapterhelper.test.DynamicFieldTest.MyPerson
 
-    /**
-     * Adaptee instance.
-     */
-    val adapteeInstance: T
-        get() = this.originalInstance
+@Field(value = "parents", type = List::class /*List<MyPerson>*/,
+        getter = "getParents", defaultValueProvider = DynamicFieldTest.ListProvider::class)
+interface MyAdapterKt : MyPerson, Adapter<Lib1_Person> {
 
-    /**
-     * Adapter manager.
-     */
-    val adapterManager: AdapterManager
+    override fun getName(): String {
+        return this.originalInstance.name
+    }
+
+    override fun getAge(): Int {
+        return this.originalInstance.age
+    }
 
 }

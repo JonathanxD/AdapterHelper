@@ -29,9 +29,10 @@ package com.github.jonathanxd.adapterhelper
 
 @FunctionalInterface
 interface Converter<I: Any, O: Any> {
+
     /**
      * Converts from [I] to [O].
-
+     *
      * @param input   Input.
      * @param adapter Adapter instance (may be null).
      * @param manager Adapter Manager.
@@ -42,7 +43,7 @@ interface Converter<I: Any, O: Any> {
     /**
      * Returns a converter that converts from [O] to [I] (may be
      * null).
-
+     *
      * @return A converter that converts from [O] to [I] (may be null).
      */
     fun revert(): Converter<O, I>? {

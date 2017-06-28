@@ -27,22 +27,15 @@
  */
 package com.github.jonathanxd.adapterhelper
 
+
 /**
- * Adapter base interface.
+ * Stores adapter as strong reference instead of weak reference, this is commonly used when
+ * `Adapter` stores states, removal of adapter instance should be manually handled.
  *
- * @param T Adaptee type.
+ * Use with care, in bigger environments the memory usage may grow significantly if you don't
+ * remove unused instances. Other option is to use [WeakAdapteeStorage] to store dynamic fields.
  */
-interface Adapter<out T : Any> : AdapterBase<T> {
-
-    /**
-     * Adaptee instance.
-     */
-    val adapteeInstance: T
-        get() = this.originalInstance
-
-    /**
-     * Adapter manager.
-     */
-    val adapterManager: AdapterManager
-
-}
+@MustBeDocumented
+@Target(AnnotationTarget.CLASS)
+@Retention(AnnotationRetention.RUNTIME)
+annotation class StrongCache

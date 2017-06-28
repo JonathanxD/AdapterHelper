@@ -1,4 +1,4 @@
-/**
+/*
  *      AdapterHelper - Adapter management helper. <https://github.com/JonathanxD/AdapterHelper>
  *
  *         The MIT License (MIT)
@@ -25,24 +25,32 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.jonathanxd.adapterhelper
+package com.github.jonathanxd.adapterhelper.test;
 
-/**
- * Adapter base interface.
- *
- * @param T Adaptee type.
- */
-interface Adapter<out T : Any> : AdapterBase<T> {
+import java.util.List;
 
-    /**
-     * Adaptee instance.
-     */
-    val adapteeInstance: T
-        get() = this.originalInstance
+public class Lib2_Person {
+    private final String name;
+    private final int age;
+    private final List<Lib2_Person> parents;
 
-    /**
-     * Adapter manager.
-     */
-    val adapterManager: AdapterManager
+    public Lib2_Person(String name, int age, List<Lib2_Person> parents) {
+        this.name = name;
+        this.age = age;
+        this.parents = parents;
+    }
 
+    public String getName() {
+        return this.name;
+    }
+
+    public int getAge() {
+        return this.age;
+    }
+
+    public List<Lib2_Person> getParents() {
+        return this.parents;
+    }
+
+    // ...
 }

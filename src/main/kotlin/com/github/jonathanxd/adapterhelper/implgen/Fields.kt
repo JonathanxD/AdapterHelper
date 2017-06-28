@@ -25,24 +25,12 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.jonathanxd.adapterhelper
+package com.github.jonathanxd.adapterhelper.implgen
 
-/**
- * Adapter base interface.
- *
- * @param T Adaptee type.
- */
-interface Adapter<out T : Any> : AdapterBase<T> {
+import com.github.jonathanxd.adapterhelper.StrongCache
 
-    /**
-     * Adaptee instance.
-     */
-    val adapteeInstance: T
-        get() = this.originalInstance
-
-    /**
-     * Adapter manager.
-     */
-    val adapterManager: AdapterManager
-
-}
+@MustBeDocumented
+@StrongCache
+@Retention(AnnotationRetention.RUNTIME)
+@Target(AnnotationTarget.CLASS)
+annotation class Fields(vararg val value: Field)

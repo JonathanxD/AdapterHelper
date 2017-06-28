@@ -1,4 +1,4 @@
-/**
+/*
  *      AdapterHelper - Adapter management helper. <https://github.com/JonathanxD/AdapterHelper>
  *
  *         The MIT License (MIT)
@@ -25,24 +25,10 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.jonathanxd.adapterhelper
+package com.github.jonathanxd.adapterhelper.test;
 
-/**
- * Adapter base interface.
- *
- * @param T Adaptee type.
- */
-interface Adapter<out T : Any> : AdapterBase<T> {
+public interface IPerson {
+    String getName();
 
-    /**
-     * Adaptee instance.
-     */
-    val adapteeInstance: T
-        get() = this.originalInstance
-
-    /**
-     * Adapter manager.
-     */
-    val adapterManager: AdapterManager
-
+    int getAge();
 }

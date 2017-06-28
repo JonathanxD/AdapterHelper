@@ -25,24 +25,32 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.jonathanxd.adapterhelper
+package com.github.jonathanxd.adapterhelper.implgen
+
+import com.github.jonathanxd.adapterhelper.StrongCache
+import java.util.function.Supplier
+import kotlin.reflect.KClass
 
 /**
- * Adapter base interface.
+ * Marks to [AdapterImplGen] generate a specific field in `Adapter` interface.
  *
- * @param T Adaptee type.
+ * Obs: All interfaces which contains [Field] instance is implicitly annotated with [StrongCache].
+ *
+ * @property value Name of the field
+ * @property getter Name of getter (empty for absent).
+ * @property setter Name of setter (empty for absent).
+ * @property defaultValueProvider Supplier which provides default value (should have a `INSTANCE` field).
  */
-interface Adapter<out T : Any> : AdapterBase<T> {
+@MustBeDocumented
+@StrongCache
+@Retention(AnnotationRetention.RUNTIME)
+@Target(AnnotationTarget.CLASS)
+annotation class Field(val value: String,
+                       val type: KClass<*>,
+                       val getter: String = "",
+                       val setter: String = "",
+                       val defaultValueProvider: KClass<out Supplier<*>> = NullProvider::class)
 
-    /**
-     * Adaptee instance.
-     */
-    val adapteeInstance: T
-        get() = this.originalInstance
-
-    /**
-     * Adapter manager.
-     */
-    val adapterManager: AdapterManager
-
+object NullProvider : Supplier<Any?> {
+    override fun get(): Any? = null
 }

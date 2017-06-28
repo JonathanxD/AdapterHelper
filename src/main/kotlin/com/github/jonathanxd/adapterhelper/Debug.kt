@@ -27,22 +27,8 @@
  */
 package com.github.jonathanxd.adapterhelper
 
-/**
- * Adapter base interface.
- *
- * @param T Adaptee type.
- */
-interface Adapter<out T : Any> : AdapterBase<T> {
+object Debug {
+    const val DEBUG_SAVE_GEN = "adapterhelper.implgen.save"
 
-    /**
-     * Adaptee instance.
-     */
-    val adapteeInstance: T
-        get() = this.originalInstance
-
-    /**
-     * Adapter manager.
-     */
-    val adapterManager: AdapterManager
-
+    fun isDebug() = System.getProperty(DEBUG_SAVE_GEN, "false")?.toBoolean() ?: false
 }

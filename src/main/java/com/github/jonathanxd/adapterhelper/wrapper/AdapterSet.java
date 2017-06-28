@@ -1,4 +1,4 @@
-/**
+/*
  *      AdapterHelper - Adapter management helper. <https://github.com/JonathanxD/AdapterHelper>
  *
  *         The MIT License (MIT)
@@ -25,24 +25,22 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.jonathanxd.adapterhelper
+package com.github.jonathanxd.adapterhelper.wrapper;
 
-/**
- * Adapter base interface.
- *
- * @param T Adaptee type.
- */
-interface Adapter<out T : Any> : AdapterBase<T> {
+import com.github.jonathanxd.adapterhelper.AdapterManager;
 
-    /**
-     * Adaptee instance.
-     */
-    val adapteeInstance: T
-        get() = this.originalInstance
+import java.util.Collection;
+import java.util.Set;
 
-    /**
-     * Adapter manager.
-     */
-    val adapterManager: AdapterManager
+public class AdapterSet<T, A> extends AdapterCollection<T, A> implements Set<T> {
+
+    public AdapterSet(Collection<A> wrapped, Class<T> target, Class<A> adaptee, AdapterManager manager) {
+        super(wrapped, target, adaptee, manager);
+    }
+
+    @Override
+    public Set<A> getWrapped() {
+        return (Set<A>) super.getWrapped();
+    }
 
 }

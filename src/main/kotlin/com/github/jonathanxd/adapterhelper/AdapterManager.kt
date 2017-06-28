@@ -27,9 +27,9 @@
  */
 package com.github.jonathanxd.adapterhelper
 
-import com.github.jonathanxd.codeapi.type.Generic
-import com.github.jonathanxd.codeapi.type.GenericType
-import com.github.jonathanxd.codeapi.util.codeType
+import com.github.jonathanxd.adapterhelper.wrapper.AdapterList
+import com.github.jonathanxd.adapterhelper.wrapper.AdapterMap
+import com.github.jonathanxd.adapterhelper.wrapper.AdapterSet
 import com.github.jonathanxd.iutils.`object`.Pair
 import com.github.jonathanxd.iutils.map.WeakValueHashMap
 import com.github.jonathanxd.iutils.optional.Require
@@ -39,82 +39,157 @@ import java.util.*
 
 /**
  * Manages all Adapter Specifications.
+ *
+ * Documentation Unification:
+ *
+ * As this is class have too much functions with same arguments and the main different is that some of them
+ * are variants which returns or receives a different type or only have a little special behavior, we unified (or aggregated? or..
+ * pasted everything below?) all the documentation here.
+ *
+ * `adapt` prefixed functions:
+ *
+ * Adapt/Wrap the instance into a type which matches another type (by assignability/hierarchy - but no order is applied).
+ *
+ * Parameters:
+ *
+ * - Adaptee (`adaptee`): Source type to adapt
+ * - Instance (`instance`): Instance of `adaptee` type which should be adapted.
+ * - Target (`toClass` or `toClasses`): May be a single [Class], multiple [Classes][Class] or no one class (zero-sized array).
+ *   - Single class: Wraps into a type which is assignable to this class.
+ *   - Multiple classes: Wraps into a type which is assignable to **all** specified classes.
+ *   - No one class: Adapt to first found type regardless hierarchy.
+ *
+ * `asAny` suffixed functions:
+ *
+ * These functions uses [Any] as return type in their signature. These functions exists more to help
+ * type system and have same functionality as others.
+ *
+ * `asAdapter` suffixed functions:
+ *
+ * These functions uses [Adapter] as return type in their signature. There is nothing special here, these
+ * functions are commonly used to avoid casts.
+ *
+ * `Base` suffixed functions:
+ *
+ * These functions have a `fallback` resolution strategy: If the normal resolution fails, the function will call resolution
+ * function again with `instance::class` as `Adaptee` type. This only happens if adapter resolution fails for `Adaptee` type
+ * (provided as argument of function). This is used in some special cases.
+ *
+ * `convert` Prefixed functions:
+ *
+ * Converts a instance of a type (commonly a Data Type) to another instance.
+ *
+ * Parameters:
+ *
+ * - From (`from`): Source type to convert
+ * - To (`to`): Target type to convert (output type)
+ * - Input (`input`): Input instance of type `from` to convert to a instance of type `to`
+ * - Adapter (`adapter`): Adapter which requested conversion (optional).
+ *
+ * `Unchecked` suffixed functions:
+ *
+ * Normally, all functions returns an instance of [Optional], [Optional.EMPTY] in case of absent [AdapterSpecification]
+ * for specified arguments, or an [Optional.of] `adapted instance` if the specification was found and adapted successfully.
+ * Function suffixed with `unchecked` throws an exception if [Optional.EMPTY] is returned by normal functions, and unbox
+ * value in [Optional] if present and return the value.
+ *
+ * `Exact`:
+ *
+ * Resolution strategy which lookups for exact types on the storage.
+ *
+ * `Assignable` (**default**):
+ *
+ * Resolution strategy which first lookups for exact types on the storage, and them lookup
+ * for assignable types. This is default because you commonly work with interfaces, and `exact lookup`
+ * does not work with implementation types unless you register them or lookup using interface type.
+ *
  */
 open class AdapterManager {
 
     /**
      * Set that store all registered [AdapterSpecification].
      */
-    private val adapterSpecificationSet = HashSet<AdapterSpecification<*, *>>()
-    private val unmodAdapterSpecificationSet = Collections.unmodifiableSet(this.adapterSpecificationSet)
+    protected val adapterSpecificationSet: MutableSet<AdapterSpecification<*, *>> = HashSet()
+
+    /**
+     * Immutable view of [adapterSpecificationSet].
+     */
+    val unmodAdapterSpecificationSet = Collections.unmodifiableSet(this.adapterSpecificationSet)
 
     /**
      * Weak value map that stores generated instances. (The value must be weak).
      */
-    private val cache = WeakValueHashMap<Pair<AdapterSpecification<*, *>, Any>, Any>()
-    private val unmodCache = Collections.unmodifiableMap(this.cache)
+    protected val cache: MutableMap<Pair<AdapterSpecification<*, *>, Any>, Any> = WeakValueHashMap()
+
+    /**
+     * Immutable view of [cache].
+     */
+    val unmodCache = Collections.unmodifiableMap(this.cache)
+
+    /**
+     * Value map that stores generated instances using strong reference.
+     */
+    protected val strongCache = mutableMapOf<Pair<AdapterSpecification<*, *>, Any>, Any>()
+
+    /**
+     * Immutable view of [strongCache].
+     */
+    val unmodStrongCache = Collections.unmodifiableMap(this.strongCache)
 
     /**
      * Map that store all registered converters.
      */
-    private val converterMap = HashMap<Pair<Class<*>, Class<*>>, Converter<*, *>>()
-    private val unmodConverterMap = Collections.unmodifiableMap(this.converterMap)
+    protected val converterMap = mutableMapOf<Pair<Class<*>, Class<*>>, Converter<*, *>>()
 
     /**
-     * Register an [AdapterSpecification].
-     *
-     * @param adapterSpecification Specification to register.
-     * @param E                    Adaptee type.
+     * Immutable view of [converterMap]
+     */
+    val unmodConverterMap = Collections.unmodifiableMap(this.converterMap)
+
+    /**
+     * AdapterManager dependent dynamic field storage, by default we use [WeakAdapteeStorage].
+     */
+    val storage: Storage = WeakAdapteeStorage()
+
+    /**
+     * Registers [adapterSpecification].
      */
     fun <E : Any> register(adapterSpecification: AdapterSpecification<E, out Any>) {
         Objects.requireNonNull(adapterSpecification)
 
-        this.adapterSpecificationMutableSet.add(adapterSpecification)
+        this.adapterSpecificationSet.add(adapterSpecification)
     }
 
     /**
-     * Unregister adapter specification.
-     *
-     * @param adapterSpecification Specification to unregister.
+     * Unregisters [adapterSpecification]
      */
     fun unregister(adapterSpecification: AdapterSpecification<*, *>) {
         Objects.requireNonNull(adapterSpecification)
 
-        this.adapterSpecificationMutableSet.remove(adapterSpecification)
+        this.adapterSpecificationSet.remove(adapterSpecification)
     }
 
     /**
-     * Register a converter that converts from [I] to [O].
-     *
-     * @param from      Input type.
-     * @param to        Output type.
-     * @param converter Converter.
-     * @param I         Input type.
-     * @param O         Output type.
+     * Registers [converter] which converts [from] type [I] [to] type [O].
      */
     fun <I : Any, O : Any> registerConverter(from: Class<I>, to: Class<O>, converter: Converter<I, O>) {
-        this.converterMutableMap.put(Pair.of<Class<*>, Class<*>>(from, to), converter)
+        this.converterMap.put(Pair.of<Class<*>, Class<*>>(from, to), converter)
 
         val revert = converter.revert()
 
         if (revert != null)
-            this.converterMutableMap.put(Pair.of<Class<*>, Class<*>>(to, from), revert)
+            this.converterMap.put(Pair.of<Class<*>, Class<*>>(to, from), revert)
     }
 
 
     /**
-     * Unregister a converter that converts from [I] to [O].
-     *
-     * @param from Input type.
-     * @param to   Output type.
-     * @param I    Input type.
-     * @param O    Output type.
+     * Unregisters the converter which converts [from] type [I] [to] type [O].
      */
     @Suppress("UNCHECKED_CAST")
     fun <I : Any, O : Any> unregisterConverter(from: Class<I>, to: Class<O>) {
         val pair = Pair.of<Class<*>, Class<*>>(from, to)
 
-        val map = this.converterMutableMap
+        val map = this.converterMap
 
         if (map.containsKey(pair)) {
             val converter = map[pair]!!
@@ -128,56 +203,28 @@ open class AdapterManager {
     }
 
     /**
-     * Gets the converter from [I] to [O].
-     *
-     * @param from Input type.
-     * @param to   Output type.
-     * @param I    Input type.
-     * @param O    Output type.
-     * @return Converter from [I] to [O].
+     * Gets the [Converter] which converts [from] type [I] [to] type [O].
      */
     fun <I : Any, O : Any> getConverter(from: Class<I>, to: Class<O>): Optional<Converter<in I, out O>> {
         return this.getAssignableConverter(from, to)
     }
 
     /**
-     * Gets the converter from [I] to [O].
-     *
-     * @param from Input type.
-     * @param to   Output type.
-     * @param I    Input type.
-     * @param O    Output type.
-     * @return Converter from [I] to [O].
+     * Gets the [Converter] which converts [from] type [I] [to] type [O]. If not found, throws an exception.
      */
     fun <I : Any, O : Any> getConverterUnchecked(from: Class<I>, to: Class<O>): Converter<in I, out O> {
         return Require.require(this.getConverter(from, to), "Can't find a converter that converts from '" + from.canonicalName + "' to '" + to.canonicalName + "'!")
     }
 
     /**
-     * Convert [I] to [O].
-     *
-     * @param from    Input type.
-     * @param to      Output type.
-     * @param input   Input value.
-     * @param adapter Adapter instance (may be null).
-     * @param I       Input type.
-     * @param O       Output type.
-     * @return Converted instance.
+     * Converts [input] [from] type [I] [to] type [O].
      */
     fun <I : Any, O : Any> convert(from: Class<I>, to: Class<O>, input: I, adapter: Adapter<*>?): Optional<O> {
         return this.getConverter(from, to).map { it.convert(input, adapter, this) }
     }
 
     /**
-     * Convert [I] to [O].
-
-     * @param from    Input type.
-     * @param to      Output type.
-     * @param input   Input value.
-     * @param adapter Adapter instance (may be null).
-     * @param I       Input type.
-     * @param O       Output type.
-     * @return Converted instance.
+     * Converts [input] [from] type [I] [to] type [O]. If converter cannot be found, throws an exception.
      */
     fun <I : Any, O : Any> convertUnchecked(from: Class<I>, to: Class<O>, input: I, adapter: Adapter<*>?): O {
         return Require.require(this.convert(from, to, input, adapter), "Can't convert from '" + from.canonicalName + "' to '" + to.canonicalName + "'!")
@@ -185,13 +232,7 @@ open class AdapterManager {
 
 
     /**
-     * Adapt all instance in `iterableInstances` to instances assignable to `toClasses`.
-     *
-     * @param adaptee           Adaptee class.
-     * @param instance          Adaptee instance.
-     * @param toClasses         Expected classes.
-     * @param E                 Adaptee type.
-     * @return Immutable list of all adapted instances (iteration order).
+     * Adapts [instance] of [adaptee] type [E] to an instance assignable [toClasses].
      */
     @Suppress("UNCHECKED_CAST")
     fun <E : Any> adaptSingleAsAny(adaptee: Class<in E>, instance: E, toClasses: Array<Class<*>>?): Optional<Any> {
@@ -204,120 +245,74 @@ open class AdapterManager {
         val adapterSpecificationOpt = this[adaptee, toClasses]
 
         // Check if is no one specification was found
-        if (!adapterSpecificationOpt.isPresent)
-        // Returns empty
+        if (!adapterSpecificationOpt.isPresent) {
+
+            // Check if instance if adapter base
+            if(instance is AdapterBase<*>) {
+                // Gets original instance/adapted instance
+                val origin = instance.originalInstance
+
+                // If target classes is empty or original instance is instance of all types
+                if(toClasses.isEmpty() || toClasses.all { it.isInstance(origin) })
+                    // Returns original instance.
+                    return Optional.of(origin)
+            }
+
+            // Returns empty
             return Optional.empty()
+        }
 
         return this.adaptSingleAsAny(instance, adapterSpecificationOpt.get() as AdapterSpecification<E, Any>)
     }
 
     /**
-     * Adapt all instance in `iterableInstances` to instances assignable to `toClasses`.
-     *
-     * @param instance              Instance to adapt
-     * @param adapterSpecification  Adapter specification.
-     * @param E                     Adaptee type.
-     * @return Immutable list of all adapted instances (iteration order).
+     * Adapts [instance] based on [adapterSpecification].
      */
     @Suppress("UNCHECKED_CAST")
     fun <E : Any> adaptSingleAsAny(instance: E, adapterSpecification: AdapterSpecification<E, Any>): Optional<Any> {
         // Gets the cache map
-        val cache = this.mutableCache
+        val cache = this.cache
+
+        // Gets the strong cache map
+        val strongCache = this.strongCache
 
         // Create the pair representing the specification and instance to adapt
         val pair = Pair.of<AdapterSpecification<*, *>, Any>(adapterSpecification, instance)
 
-        // Check if cache contains an Adapter instance that adapted 'instance'
-        if (cache.containsKey(pair)) {
-            // Add the cached instance to list
-            return Optional.of(cache[pair] as E)
-        } else {
-            // Create adapter instance;
-            val t = adapterSpecification.create(instance, this)
+        // Gets cached instance
+        val cacheGet = cache[pair]
 
-            // Cache the instance
-            cache.put(pair, t)
-
-            // Returns the adapted instance.
-            return Optional.of(t)
+        // If not null, returns cached adapter instance.
+        if(cacheGet != null) {
+            return Optional.of(cacheGet as E)
         }
-    }
 
-    fun <E : Any> adaptAllAsAny(adaptee: Class<in E>, instances: List<E>, toClasses: Array<Class<*>>, type: GenericType): List<Any> =
-            this.adaptAllAsAny(adaptee, instances as Iterable<E>, toClasses, type) as List<Any>
+        // Gets strong cached instance
+        val strongCacheGet = strongCache[pair]
 
-    fun <E : Any> adaptAllAsAny(adaptee: Class<in E>, instances: Set<E>, toClasses: Array<Class<*>>, type: GenericType): Set<Any> =
-            this.adaptAllAsAny(adaptee, instances as Iterable<E>, toClasses, type) as Set<Any>
+        // If not null, returns cached adapter instance.
+        if(strongCacheGet != null) {
+            return Optional.of(strongCacheGet as E)
+        }
 
-    fun <E : Any> adaptAllAsAny(adaptee: Class<in E>, instances: Collection<E>, toClasses: Array<Class<*>>, type: GenericType): Collection<Any> =
-            this.adaptAllAsAny(adaptee, instances as Iterable<E>, toClasses, type) as Collection<Any>
+        // Create adapter instance;
+        val t = adapterSpecification.create(instance, this)
 
-    /**
-     * Adapt all instance in [instances] to instances assignable to [toClasses].
-     *
-     * This method uses **CodeProxy** to proxy the input instance and handle adaptations.
-     *
-     * @param adaptee           Adaptee class.
-     * @param instances         Adaptee instances.
-     * @param toClasses         Expected classes.
-     * @param E                 Adaptee type.
-     * @return Type of the same input type.
-     */
-    @Suppress("UNCHECKED_CAST")
-    fun <E : Any> adaptAllAsAny(adaptee: Class<in E>, instances: Iterable<E>, toClasses: Array<Class<*>>, type: GenericType): Iterable<Any> {
-        return createProxy(adaptee, instances, toClasses, this, null, type)
-    }
+        // If should strong cache
+        if(adapterSpecification.strongCache(t)) {
+            // Strong cache the instance
+            strongCache[pair] = t
+        } else {
+            // Cache the instance
+            cache[pair] = t
+        }
 
-    /**
-     * Adapt all instance in [instances] to instances assignable to [toClasses].
-     *
-     * This method uses **CodeProxy** to proxy the input instance and handle adaptations.
-     *
-     * @param adaptee           Adaptee class.
-     * @param instances         Adaptee instances.
-     * @param toClasses         Expected classes.
-     * @param E                 Adaptee type.
-     * @return Iterable type of the same input type.
-     */
-    @Suppress("UNCHECKED_CAST")
-    fun <E : Any, V : Any> adaptAllAsAny(adaptee: Class<in E>, instances: Any, toClasses: Array<Class<*>>, type: GenericType): V {
-        return createProxy(adaptee, instances, toClasses, this, null, type)
+        // Returns the adapted instance.
+        return Optional.of(t)
     }
 
     /**
-     * Adapt `instance` to a instance assignable to `toClasses`.
-     *
-     * @param adaptee   Adaptee class.
-     * @param instance  Adaptee instance.
-     * @param toClass   Expected class.
-     * @return Any.
-     */
-    @Suppress("UNCHECKED_CAST")
-    fun <E : Any> adaptAllAsAny(adaptee: Class<in E>, instances: Iterable<E>, toClass: Class<*>?, type: GenericType): Iterable<Any> {
-        return this.adaptAllAsAny(adaptee, instances, toClass?.let { arrayOf(it) } ?: emptyArray(), type)
-    }
-
-    /**
-     * Adapt all instance in `iterableInstances` to instances assignable to `toClasses`.
-     *
-     * @param adaptee           Adaptee class.
-     * @param instances         Adaptee instances.
-     * @param toClasses         Expected classes.
-     * @param E                 Adaptee type.
-     * @return Immutable list of all adapted instances (iteration order).
-     */
-    @Suppress("UNCHECKED_CAST")
-    fun <E : Any> adaptAllAsAdapter(adaptee: Class<in E>, instances: Iterable<E>, toClasses: Array<Class<*>>, type: GenericType): Iterable<Adapter<E>> {
-        return this.adaptAllAsAny(adaptee, instances, toClasses, type) as Iterable<Adapter<E>>
-    }
-
-    /**
-     * Adapt `instance` to a instance assignable to `toClasses`.
-     *
-     * @param adaptee   Adaptee class.
-     * @param instance  Adaptee instance.
-     * @param toClasses Expected classes.
-     * @return Any.
+     * See [AdapterManager]
      */
     @Suppress("UNCHECKED_CAST")
     fun <E : Any> adaptAsAny(adaptee: Class<in E>, instance: E, toClasses: Array<Class<*>>): Optional<Any> {
@@ -325,12 +320,7 @@ open class AdapterManager {
     }
 
     /**
-     * Adapt `instance` to a instance assignable to `toClasses`.
-     *
-     * @param adaptee   Adaptee class.
-     * @param instance  Adaptee instance.
-     * @param toClass   Expected class.
-     * @return Any.
+     * See [AdapterManager]
      */
     @Suppress("UNCHECKED_CAST")
     fun <E : Any> adaptAsAny(adaptee: Class<in E>, instance: E, toClass: Class<*>?): Optional<Any> {
@@ -338,13 +328,7 @@ open class AdapterManager {
     }
 
     /**
-     * Adapt `instance` to a instance assignable to `toClasses`.
-     *
-     * @param adaptee   Adaptee class.
-     * @param instance  Adaptee instance.
-     * @param toClasses Expected classes.
-     * @param E         Adaptee type.
-     * @return Adapter instance.
+     * See [AdapterManager]
      */
     @Suppress("UNCHECKED_CAST")
     fun <E : Any> adaptAsAdapter(adaptee: Class<in E>, instance: E, toClasses: Array<Class<*>>): Optional<Adapter<E>> {
@@ -352,96 +336,70 @@ open class AdapterManager {
     }
 
     /**
-     * Adapt `instance` to a instance assignable to `toClass`.
-     *
-     * @param adaptee  Adaptee class.
-     * @param instance Adaptee instance.
-     * @param toClass  Expected class.
-     * @param E        Adaptee type.
-     * @return Adapter instance.
+     * See [AdapterManager]
      */
     fun <E : Any> adaptAsAdapter(adaptee: Class<in E>, instance: E, toClass: Class<*>?): Optional<Adapter<E>> {
         return this.adaptAsAdapter(adaptee, instance, toClass?.let { arrayOf(it) } ?: emptyArray())
     }
 
     /**
-     * Adapt `instance` to a instance assignable to `toClasses`.
-     *
-     * @param adaptee   Adaptee class.
-     * @param instance  Adaptee instance.
-     * @param toClasses Expected classes.
-     * @param E         Adaptee type.
-     * @return Adapter instance.
+     * See [AdapterManager]
      */
     fun <E : Any> adaptUncheckedAsAdapter(adaptee: Class<in E>, instance: E, toClasses: Array<Class<*>>): Adapter<E> {
         return Require.require(this.adapt(adaptee, instance, toClasses), "Can't find adapter of '" + adaptee + "' to '" + Arrays.toString(toClasses) + "'!")
     }
 
     /**
-     * Adapt `instance` to a instance assignable to `toClasses`.
-     *
-     * @param adaptee  Adaptee class.
-     * @param instance Adaptee instance.
-     * @param toClass  Expected class.
-     * @param E        Adaptee type.
-     * @return Adapter instance.
+     * See [AdapterManager]
      */
     fun <E : Any> adaptUncheckedAsAdapter(adaptee: Class<in E>, instance: E, toClass: Class<*>): Adapter<E> {
         return Require.require(this.adaptAsAdapter(adaptee, instance, toClass), "Can't find adapter of '$adaptee' to '$toClass'!")
     }
 
     /**
-     * Adapt all instance in `iterableInstances` to instances assignable to `toClass`.
-     *
-     * @param adaptee           Adaptee class.
-     * @param instances Adaptee instances.
-     * @param toClass           Expected class.
-     * @param E                 Adaptee type.
-     * @return Immutable list of all adapted instances (iteration order).
-     */
-    fun <E : Any> adaptAllAsAdapter(adaptee: Class<in E>, instances: Iterable<E>, toClass: Class<*>?, type: GenericType): Iterable<Adapter<E>> {
-        return this.adaptAllAsAdapter(adaptee, instances, toClass?.let { arrayOf(it) } ?: emptyArray(), type)
-    }
-
-
-    @Suppress("UNCHECKED_CAST")
-    fun <E : Any, O: Any> adaptAll(adaptee: Class<in E>, instances: List<E>, toClass: Class<O>, type: GenericType): List<O> =
-            this.adaptAll(adaptee, instances as Iterable<E>, toClass, type) as List<O>
-
-    @Suppress("UNCHECKED_CAST")
-    fun <E : Any, O: Any> adaptAll(adaptee: Class<in E>, instances: Set<E>, toClass: Class<O>, type: GenericType): Set<O> =
-            this.adaptAll(adaptee, instances as Iterable<E>, toClass, type) as Set<O>
-
-    @Suppress("UNCHECKED_CAST")
-    fun <E : Any, O: Any> adaptAll(adaptee: Class<in E>, instances: Collection<E>, toClass: Class<O>, type: GenericType): Collection<O> =
-            this.adaptAll(adaptee, instances as Iterable<E>, toClass, type) as Collection<O>
-
-    /**
-     * Adapt all instance in `iterableInstances` to instances assignable to `toClass`.
-     *
-     * @param adaptee           Adaptee class.
-     * @param instances Adaptee instances.
-     * @param toClass           Expected class.
-     * @param E                 Adaptee type.
-     * @return Immutable list of all adapted instances (iteration order).
+     * Creates an wrapper list which delegates calls to wrapped set and adapt values calling [AdapterManager] methods.
+     * This list wrapper will *adapt* values of type [E] of [instanceList]
+     * to values of type [O] (and vice-versa when needed).
      */
     @Suppress("UNCHECKED_CAST")
-    fun <E : Any, O: Any> adaptAll(adaptee: Class<in E>, instances: Iterable<E>, toClass: Class<O>, type: GenericType): Iterable<O> {
-        return this.adaptAllAsAny(adaptee, instances, toClass, type) as Iterable<O>
-    }
+    fun <E : Any, O: Any> createAdapterList(adaptee: Class<E>, instanceList: List<E>, toClass: Class<O>): List<O> =
+            AdapterList(instanceList, toClass, adaptee, this)
 
     /**
-     * Adapt `instance` to a instance assignable to `toClasses`.
-     *
-     * This method will try to resolve adapter of [adaptee] class, if not found, and [adaptee] class
-     * is not equal to [instance::class][instance], this method will try to resolve adapter of [instance::class][instance].
-     *
-     * @param adaptee   Adaptee class.
-     * @param instance  Adaptee instance.
-     * @param toClasses Expected classes.
-     * @param E         Adaptee type.
-     * @param O         Expected type.
-     * @return Expected instance.
+     * Creates an wrapper set which delegates calls to wrapped set and adapt values calling [AdapterManager] methods.
+     * This set wrapper will *adapt* values of type [E] of [instanceSet]
+     * to values of type [O] (and vice-versa when needed).
+     */
+    @Suppress("UNCHECKED_CAST")
+    fun <E : Any, O: Any> createAdapterSet(adaptee: Class<E>, instanceSet: Set<E>, toClass: Class<O>): Set<O> =
+            AdapterSet(instanceSet, toClass, adaptee, this)
+
+    /**
+     * Creates an wrapper collection which delegates calls to wrapped collection and adapt values calling [AdapterManager] methods.
+     * This collection wrapper will *adapt* values of type [E] of [instanceCollection]
+     * to values of type [O] (and vice-versa when needed).
+     */
+    @Suppress("UNCHECKED_CAST")
+    fun <E : Any, O: Any> createAdapterCollection(adaptee: Class<E>,
+                                                  instanceCollection: Collection<E>,
+                                                  toClass: Class<O>): Collection<O> =
+            AdapterList(instanceCollection, toClass, adaptee, this)
+
+
+    /**
+     * Creates an wrapper map which delegates calls to wrapped map and adapt values calling [AdapterManager] methods.
+     * This map wrapper will *adapt* keys of type [KE] and values of type [VE] of [instanceMap] to keys and values
+     * of types [KO] and [VO] consecutively (and vice-versa when needed).
+     */
+    @Suppress("UNCHECKED_CAST")
+    fun <KE : Any, VE: Any, KO: Any, VO: Any> createAdapterMap(adapteeKey: Class<KE>, adapteeValue: Class<VE>,
+                                                               instanceMap: Map<KE, VE>,
+                                                               toKey: Class<KO>, toValue: Class<VO>): Map<KO, VO> =
+            AdapterMap(instanceMap, toKey, toValue, adapteeKey, adapteeValue, this)
+
+
+    /**
+     * See [AdapterManager]
      */
     @Suppress("UNCHECKED_CAST")
     fun <E : Any, O: Any> adaptBase(adaptee: Class<in E>, instance: E, toClasses: Array<Class<*>>): Optional<O> {
@@ -454,14 +412,7 @@ open class AdapterManager {
     }
 
     /**
-     * Adapt `instance` to a instance assignable to `toClasses`.
-     *
-     * @param adaptee   Adaptee class.
-     * @param instance  Adaptee instance.
-     * @param toClasses Expected classes.
-     * @param E         Adaptee type.
-     * @param O         Expected type.
-     * @return Expected instance.
+     * See [AdapterManager]
      */
     @Suppress("UNCHECKED_CAST")
     fun <E : Any, O: Any> adapt(adaptee: Class<in E>, instance: E, toClasses: Array<Class<*>>): Optional<O> {
@@ -469,14 +420,7 @@ open class AdapterManager {
     }
 
     /**
-     * Adapt `instance` to a instance assignable to `toClass`.
-     *
-     * @param adaptee  Adaptee class.
-     * @param instance Adaptee instance.
-     * @param toClass  Expected class.
-     * @param E        Adaptee type.
-     * @param O        Expected type.
-     * @return Expected instance.
+     * See [AdapterManager]
      */
     @Suppress("UNCHECKED_CAST")
     fun <E : Any, O: Any> adapt(adaptee: Class<in E>, instance: E, toClass: Class<O>): Optional<O> {
@@ -484,17 +428,7 @@ open class AdapterManager {
     }
 
     /**
-     * Adapt `instance` to a instance assignable to `toClasses`.
-     *
-     * This method will try to resolve adapter of [adaptee] class, if not found, and [adaptee] class
-     * is not equal to [instance::class][instance], this method will try to resolve adapter of [instance::class][instance].
-     *
-     * @param adaptee   Adaptee class.
-     * @param instance  Adaptee instance.
-     * @param toClasses Expected classes.
-     * @param E         Adaptee type.
-     * @param O         Expected type.
-     * @return Expected instance.
+     * See [AdapterManager]
      */
     @Suppress("UNCHECKED_CAST")
     fun <E : Any, O: Any> adaptBaseUnchecked(adaptee: Class<in E>, instance: E, toClasses: Array<Class<*>>): O {
@@ -502,28 +436,14 @@ open class AdapterManager {
     }
 
     /**
-     * Adapt `instance` to a instance assignable to `toClass`.
-     *
-     * @param adaptee  Adaptee class.
-     * @param instance Adaptee instance.
-     * @param toClass  Expected class.
-     * @param E        Adaptee type.
-     * @param O        Expected type.
-     * @return Expected instance.
+     * See [AdapterManager]
      */
     fun <E : Any, O: Any> adaptUnchecked(adaptee: Class<in E>, instance: E, toClass: Class<O>): O {
         return Require.require(this.adapt(adaptee, instance, toClass), "Can't find adapter of '$adaptee' to '$toClass'!")
     }
 
     /**
-     * Adapt `instance` to a instance assignable to `toClasses`.
-     *
-     * @param adaptee   Adaptee class.
-     * @param instance  Adaptee instance.
-     * @param toClasses Expected classes.
-     * @param E         Adaptee type.
-     * @param O         Expected type.
-     * @return Expected instance.
+     * See [AdapterManager]
      */
     @Suppress("UNCHECKED_CAST")
     fun <E : Any, O: Any> adaptUnchecked(adaptee: Class<in E>, instance: E, toClasses: Array<Class<*>>): O {
@@ -531,74 +451,39 @@ open class AdapterManager {
     }
 
     /**
-     * Gets the Immutable [Set] instance of all registered [AdapterSpecification].
-     *
-     * @return Immutable [Set] instance of all registered [AdapterSpecification].
-     */
-    fun getAdapterSpecificationSet(): Set<AdapterSpecification<*, *>> {
-        return this.unmodAdapterSpecificationSet
-    }
-
-    /**
-     * Gets the Immutable [Map] of cached adapter instance.
-     *
-     * @return Immutable [Map] of cached adapter instance.
-     */
-    fun getCache(): Map<Pair<AdapterSpecification<*, *>, Any>, Any> {
-        return this.unmodCache
-    }
-
-    /**
-     * Gets the Immutable [Map] of registered converters.
-     *
-     * @return Immutable [Map] of registered converters.
-     */
-    fun getConverterMap(): Map<Pair<Class<*>, Class<*>>, Converter<*, *>> {
-        return unmodConverterMap
-    }
-
-    /**
-     * Gets the Mutable [Set] instance of all registered [AdapterSpecification].
-     *
-     * @return Mutable [Set] instance of all registered [AdapterSpecification].
-     */
-    protected val adapterSpecificationMutableSet: MutableSet<AdapterSpecification<*, *>>
-        get() = this.adapterSpecificationSet
-
-    /**
-     * Gets the Mutable [Map] of cached adapter instance.
-     *
-     * @return Mutable [Map] of cached adapter instance.
-     */
-    protected val mutableCache: MutableMap<Pair<AdapterSpecification<*, *>, Any>, Any>
-        get() = this.cache
-
-    /**
-     * Gets the Mutable [Map] of registered converters.
-     *
-     * @return Mutable [Map] of registered converters.
-     */
-    protected val converterMutableMap: MutableMap<Pair<Class<*>, Class<*>>, Converter<*, *>>
-        get() = this.converterMap
-
-    /**
      * Cleanup [Adapter Instance Cache][cache].
      */
     fun cleanupInstanceCache() {
-        this.mutableCache.clear()
+        this.cache.clear()
     }
 
     /**
-     * Gets the converter from [I] to [O].
-     *
-     * @param from Input type.
-     * @param to   Output type.
-     * @param I    Input type.
-     * @param O    Output type.
-     * @return Converter from [I] to [O].
+     * Cleanup [Strong Adapter Instance Cache][cache].
+     */
+    fun cleanupStrongInstanceCache() {
+        this.strongCache.clear()
+    }
+
+    /**
+     * Removes strong cache entry of [adapteeInstance] which was adapted by adapter specified by [specification],
+     * and returns remove adapter instance, or null if not present.
+     */
+    fun uncacheStrong(adapteeInstance: Any, specification: AdapterSpecification<*, *>): Any? =
+        this.strongCache.remove(Pair.of(specification, adapteeInstance))
+
+    /**
+     * Removes all strong cache entry associated to [adapteeInstance] regardless the adapter,
+     * and returns true if any value was removed as result of this operation.
+     */
+    fun uncacheAllStrong(adapteeInstance: Any): Boolean
+        = this.strongCache.entries.removeIf { it.key.second == adapteeInstance }
+
+
+    /**
+     * See [AdapterManager]
      */
     @Suppress("UNCHECKED_CAST", "NAME_SHADOWING")
-    private fun <I : Any, O : Any> getExactConverter(from: Class<I>, to: Class<O>): Optional<Converter<in I, out O>> {
+    fun <I : Any, O : Any> getExactConverter(from: Class<I>, to: Class<O>): Optional<Converter<in I, out O>> {
         var from = from
         var to = to
 
@@ -613,26 +498,20 @@ open class AdapterManager {
 
         val pair = Pair.of<Class<*>, Class<*>>(from, to)
 
-        return Optional.ofNullable(this.converterMutableMap[pair] as Converter<I, O>?)
+        return Optional.ofNullable(this.converterMap[pair] as Converter<I, O>?)
     }
 
     /**
-     * Gets the converter from any instance assignable to [I] to [O] or super-types of [O].
-     *
-     * @param from Input type.
-     * @param to   Output type.
-     * @param I    Input type.
-     * @param O    Output type.
-     * @return Converter from [I] to [O].
+     * See [AdapterManager]
      */
     @Suppress("UNCHECKED_CAST")
-    private fun <I : Any, O : Any> getAssignableConverter(from: Class<I>, to: Class<O>): Optional<Converter<in I, out O>> {
+    fun <I : Any, O : Any> getAssignableConverter(from: Class<I>, to: Class<O>): Optional<Converter<in I, out O>> {
         val exactConverter = this.getExactConverter(from, to)
 
         if (exactConverter.isPresent)
             return exactConverter
 
-        val map = this.converterMutableMap
+        val map = this.converterMap
 
         for ((key, value) in map) {
 
@@ -640,9 +519,9 @@ open class AdapterManager {
             // Only thing that you have to known about this code is that it determines if the converter is valid
             // This code leads with Covariance and Contravariance
             // Converter#from is contravariant and Converter#to is covariant
-            if (key._1().isAssignableFrom(from)) {
+            if (key.first.isAssignableFrom(from)) {
                 // If the parameter 'from' is assignable to converter@from
-                if (to.isAssignableFrom(key._2()))
+                if (to.isAssignableFrom(key.second))
                 // If converter@to is assignable from parameter 'to'
                     return Optional.of(value as Converter<I, O>) // Returns the converter
             }
@@ -652,30 +531,18 @@ open class AdapterManager {
     }
 
     /**
-     * Gets the [AdapterSpecification] that provide the adapter of `adaptee` class that
-     * inherits all `relation` classes.
-     *
-     * @param adaptee  Adapter class.
-     * @param relation Inheritance relation.
-     * @return [AdapterSpecification] that provide the adapter of `adaptee` class that
-     * inherits all `relation` classes.
+     * See [AdapterManager]
      */
-    private operator fun get(adaptee: Class<*>, relation: Array<Class<*>>): Optional<AdapterSpecification<*, *>> {
+    operator fun get(adaptee: Class<*>, relation: Array<Class<*>>): Optional<AdapterSpecification<*, *>> {
         return this.getAssignable(adaptee, relation)
     }
 
     /**
-     * Gets the [AdapterSpecification] that provide the adapter of `adaptee` class that
-     * inherits all `relation` classes.
-     *
-     * @param adaptee  Adapter class.
-     * @param relation Inheritance relation.
-     * @return [AdapterSpecification] that provide the adapter of `adaptee` class that
-     * inherits all `relation` classes.
+     * See [AdapterManager]
      */
-    private fun getExact(adaptee: Class<*>, relation: Array<Class<*>>): Optional<AdapterSpecification<*, *>> {
+    fun getExact(adaptee: Class<*>, relation: Array<Class<*>>): Optional<AdapterSpecification<*, *>> {
 
-        return Optional.ofNullable(this.adapterSpecificationMutableSet
+        return Optional.ofNullable(this.adapterSpecificationSet
                 .firstOrNull { adapterSpecification ->
 
                     if (adapterSpecification.adapteeClass != adaptee)
@@ -692,16 +559,9 @@ open class AdapterManager {
     }
 
     /**
-     * Gets the [AdapterSpecification] that provide the adapter of `adaptee`, or a
-     * adapter of superclasses of `adaptee`, class that inherits all `relation`
-     * classes.
-     *
-     * @param adaptee  Adapter class.
-     * @param relation Inheritance relation.
-     * @return [AdapterSpecification] that provide the adapter of `adaptee` class that
-     * inherits all `relation` classes.
+     * See [AdapterManager]
      */
-    private fun getAssignable(adaptee: Class<*>, relation: Array<Class<*>>): Optional<AdapterSpecification<*, *>> {
+    fun getAssignable(adaptee: Class<*>, relation: Array<Class<*>>): Optional<AdapterSpecification<*, *>> {
         Objects.requireNonNull(adaptee)
         Objects.requireNonNull(relation)
 
@@ -719,6 +579,59 @@ open class AdapterManager {
         return exact
     }
 
+    /**
+     * Creates a [Builder] instance which allows a construction two way adapter helper instance ([Builder.FromTo]).
+     */
+    fun builder(): Builder = ABuilder()
+
+    inner class ABuilder : Builder {
+        override fun <F: Any> from(type: Class<F>): Builder.From<F> = AFrom(type)
+        override fun <T: Any> to(type: Class<T>): Builder.To<T> = ATo(type)
+        override fun <T : Any> to(closestType: Class<T>, types: List<Class<out T>>): Builder.MultiTo<T> {
+            if(types.any { !closestType.isAssignableFrom(it) })
+                throw IllegalArgumentException("Can't assign a type of ${types.joinToString()} to closestType: $closestType.")
+
+            return AMultiTo(types.toTypedArray())
+        }
+    }
+
+    inner class AFrom<F: Any>(val from: Class<F>) : Builder.From<F> {
+        override fun <T: Any> to(type: Class<T>): Builder.FromTo<F, T> = AFromTo(from, type)
+        override fun <T : Any> to(closestType: Class<T>, types: List<Class<out T>>): Builder.FromMultiTo<F, T> {
+            if(types.any { !closestType.isAssignableFrom(it) })
+                throw IllegalArgumentException("Can't assign a type of ${types.joinToString()} to closestType: $closestType.")
+
+            return AFromMultiTo(from, types.toTypedArray())
+        }
+    }
+
+    inner class ATo<T: Any>(val to: Class<T>): Builder.To<T> {
+        override fun <F: Any> from(type: Class<F>): Builder.FromTo<F, T> = AFromTo(type, to)
+    }
+
+    inner class AMultiTo<T: Any>(val to: Array<Class<out T>>): Builder.MultiTo<T> {
+        override fun <F : Any> from(type: Class<F>): Builder.FromMultiTo<F, T> = AFromMultiTo(type, to)
+    }
+
+    inner class AFromTo<F: Any, T: Any>(val from: Class<F>, val to: Class<T>) : Builder.FromTo<F, T> {
+        private val reverse = ReverseAFromTo(this)
+
+        override fun reverse(): Builder.FromTo<T, F> = reverse
+        override fun adapt(instance: F?): T? = if(instance == null) null else adaptUnchecked(from, instance, to)
+    }
+
+    inner class ReverseAFromTo<F: Any, T: Any>(val origin: AFromTo<T, F>) : Builder.FromTo<F, T> {
+
+        override fun reverse(): Builder.FromTo<T, F> = origin
+        override fun adapt(instance: F?): T? = if(instance == null) null else adaptUnchecked(origin.to, instance, origin.from)
+    }
+
+    inner class AFromMultiTo<F: Any, T: Any>(val from: Class<F>, val to: Array<Class<out T>>) : Builder.FromMultiTo<F, T> {
+        @Suppress("UNCHECKED_CAST")
+        override fun adapt(instance: F?): T? = if(instance == null) null else adaptUnchecked(from, instance, to as Array<Class<*>>)
+    }
+
+
     companion object {
 
         /**
@@ -731,4 +644,6 @@ open class AdapterManager {
             return AdapterManager()
         }
     }
+
+
 }

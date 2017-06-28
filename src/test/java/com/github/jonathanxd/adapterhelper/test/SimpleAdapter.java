@@ -54,12 +54,6 @@ public class SimpleAdapter implements Person, Adapter<OldPerson> {
 
     @NotNull
     @Override
-    public OldPerson getAdapteeInstance() {
-        return this.old;
-    }
-
-    @NotNull
-    @Override
     public AdapterManager getAdapterManager() {
         return this.adapterManager;
     }
@@ -67,6 +61,14 @@ public class SimpleAdapter implements Person, Adapter<OldPerson> {
     @NotNull
     @Override
     public OldPerson getOriginalInstance() {
-        return (OldPerson) DefaultImpls.getOriginalInstance(this);
+        return this.old;
     }
+
+    @NotNull
+    @Override
+    public OldPerson getAdapteeInstance() {
+        return (OldPerson) Adapter.DefaultImpls.getAdapteeInstance(this);
+    }
+
+
 }

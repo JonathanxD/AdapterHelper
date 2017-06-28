@@ -27,22 +27,51 @@
  */
 package com.github.jonathanxd.adapterhelper
 
+import java.util.WeakHashMap
+
+interface Storage {
+
+    /**
+     * Associates a [value] to [adaptee], [name] and [adapterType].
+     */
+    fun <E : Any, T : Any, V : Any> store(adaptee: E, name: String, value: V?, adapterType: Class<T>)
+
+    /**
+     * Retrieve a value associated to [adaptee], [name] and [adapterType].
+     */
+    fun <E : Any, T : Any, V : Any> retrieve(adaptee: E, name: String, adapterType: Class<T>): V?
+
+    /**
+     * Returns true if this storage has a value associated to [adaptee], [name] and [adapterType].
+     */
+    fun <E: Any, T: Any> hasValue(adaptee: E, name: String, adapterType: Class<T>): Boolean
+}
+
 /**
- * Adapter base interface.
- *
- * @param T Adaptee type.
+ * [WeakHashMap] backed [Storage]. The keys are stored weakly and values
+ * using a [Map] of [String] and `[Any]?`.
  */
-interface Adapter<out T : Any> : AdapterBase<T> {
+class WeakAdapteeStorage : Storage {
 
-    /**
-     * Adaptee instance.
-     */
-    val adapteeInstance: T
-        get() = this.originalInstance
+    private val map = WeakHashMap<Any, MutableMap<String, Any?>>()
 
-    /**
-     * Adapter manager.
-     */
-    val adapterManager: AdapterManager
+    override fun <E : Any, T : Any, V : Any> store(adaptee: E, name: String, value: V?, adapterType: Class<T>) {
+        this.map.computeIfAbsent(adaptee, {mutableMapOf()}).put(name, value)
+    }
+
+    override fun <E : Any, T : Any, V : Any> retrieve(adaptee: E, name: String, adapterType: Class<T>): V? {
+        @Suppress("UNCHECKED_CAST")
+        return this.map[adaptee]?.get(name) as V?
+    }
+
+    override fun <E : Any, T : Any> hasValue(adaptee: E, name: String, adapterType: Class<T>): Boolean {
+        return this.map[adaptee]?.contains(name) ?: false
+    }
+
+    companion object {
+        @JvmField
+        val GLOBAL = WeakAdapteeStorage()
+    }
+
 
 }

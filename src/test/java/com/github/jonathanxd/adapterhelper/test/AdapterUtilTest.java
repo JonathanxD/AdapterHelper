@@ -30,7 +30,7 @@ package com.github.jonathanxd.adapterhelper.test;
 import com.github.jonathanxd.adapterhelper.Adapter;
 import com.github.jonathanxd.adapterhelper.AdapterManager;
 import com.github.jonathanxd.adapterhelper.AdapterSpecification;
-import com.github.jonathanxd.adapterhelper.AdapterUtil;
+import com.github.jonathanxd.adapterhelper.implgen.AdapterImplGen;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -44,9 +44,9 @@ public class AdapterUtilTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testAdapterUtilAbstract() throws Exception {
-        Class<? extends Adapter<OldPerson>> aClass = AdapterUtil.genImpl(A.class, OldPerson.class);
+        Class<?> aClass = AdapterImplGen.genImpl(A.class, OldPerson.class);
 
-        Constructor<? extends Adapter<OldPerson>> declaredConstructor = aClass.getDeclaredConstructor(OldPerson.class, AdapterManager.class);
+        Constructor<?> declaredConstructor = aClass.getDeclaredConstructor(OldPerson.class, AdapterManager.class);
 
         manager.register(AdapterSpecification.createGeneric((o, manager1) -> {
             try {
@@ -59,9 +59,9 @@ public class AdapterUtilTest {
 
     @Test
     public void testAdapterUtil() throws Exception {
-        Class<? extends Adapter<OldPerson>> aClass = AdapterUtil.genImpl(B.class, OldPerson.class);
+        Class<?> aClass = AdapterImplGen.genImpl(B.class, OldPerson.class);
 
-        Constructor<? extends Adapter<OldPerson>> declaredConstructor = aClass.getDeclaredConstructor(OldPerson.class, AdapterManager.class);
+        Constructor<?> declaredConstructor = aClass.getDeclaredConstructor(OldPerson.class, AdapterManager.class);
 
         manager.register(AdapterSpecification.createGeneric((o, manager1) -> {
             try {
