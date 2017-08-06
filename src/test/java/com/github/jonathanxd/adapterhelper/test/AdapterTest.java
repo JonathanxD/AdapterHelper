@@ -30,8 +30,9 @@ package com.github.jonathanxd.adapterhelper.test;
 import com.github.jonathanxd.adapterhelper.Adapter;
 import com.github.jonathanxd.adapterhelper.AdapterManager;
 import com.github.jonathanxd.adapterhelper.AdapterSpecification;
-import com.github.jonathanxd.iutils.collection.CollectionUtils;
+import com.github.jonathanxd.iutils.collection.Collections3;
 import com.github.jonathanxd.iutils.list.PredicateArrayList;
+import com.github.jonathanxd.iutils.list.PredicateWrappedList;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -266,22 +267,11 @@ public class AdapterTest {
         }
     }
 
-    public static class MyPredicateArrayList<E> extends PredicateArrayList<E> {
-
-        public MyPredicateArrayList(int initialCapacity, Predicate<E> predicate) {
-            super(initialCapacity, predicate);
-        }
-
-        public MyPredicateArrayList() {
-            super(e -> true);
-        }
+    public static class MyPredicateArrayList<E> extends PredicateWrappedList<E> {
 
         public MyPredicateArrayList(Predicate<E> predicate) {
             super(predicate);
         }
 
-        public MyPredicateArrayList(Collection<? extends E> c, Predicate<E> predicate) {
-            super(c, predicate);
-        }
     }
 }

@@ -33,7 +33,7 @@ import com.github.jonathanxd.adapterhelper.Try
 import com.github.jonathanxd.codeapi.Types
 import com.github.jonathanxd.codeapi.base.*
 import com.github.jonathanxd.codeapi.bytecode.classloader.CodeClassLoader
-import com.github.jonathanxd.codeapi.bytecode.processor.BytecodeProcessor
+import com.github.jonathanxd.codeapi.bytecode.processor.BytecodeGenerator
 import com.github.jonathanxd.codeapi.common.MethodTypeSpec
 import com.github.jonathanxd.codeapi.factory.*
 import com.github.jonathanxd.codeapi.literal.Literals
@@ -192,7 +192,7 @@ object AdapterImplGen {
                 .build()
                 .extend(klass))
 
-        val decl = BytecodeProcessor().process(declaration)
+        val decl = BytecodeGenerator().process(declaration)
 
         @Suppress("UNCHECKED_CAST")
         return loader.define(decl) as Class<out F>
