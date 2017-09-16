@@ -71,7 +71,7 @@ class SaveCapableCodeClassLoader(val wrapped: CodeClassLoader) : CodeClassLoader
             if (!Debug.isDebug())
                 return
 
-            val typeDeclaration = bytecodeClass.type
+            val typeDeclaration = bytecodeClass.declaration as TypeDeclaration
 
             var canonicalName = "gen/adapterhelper/" + typeDeclaration.canonicalName
 

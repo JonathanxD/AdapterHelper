@@ -30,13 +30,17 @@ package com.github.jonathanxd.adapterhelper.implgen
 import com.github.jonathanxd.adapterhelper.Adapter
 import com.github.jonathanxd.adapterhelper.AdapterManager
 import com.github.jonathanxd.adapterhelper.Try
+import com.github.jonathanxd.adapterhelper.implgen.add.AdditionalHandler
+import com.github.jonathanxd.adapterhelper.implgen.add.AdditionalHandlerHelper
 import com.github.jonathanxd.codeapi.Types
 import com.github.jonathanxd.codeapi.base.*
 import com.github.jonathanxd.codeapi.bytecode.classloader.CodeClassLoader
 import com.github.jonathanxd.codeapi.bytecode.processor.BytecodeGenerator
 import com.github.jonathanxd.codeapi.common.MethodTypeSpec
+import com.github.jonathanxd.codeapi.common.VariableRef
 import com.github.jonathanxd.codeapi.factory.*
 import com.github.jonathanxd.codeapi.literal.Literals
+import com.github.jonathanxd.codeapi.type.TypeRef
 import com.github.jonathanxd.codeapi.util.codeType
 import com.github.jonathanxd.codeapi.util.conversion.extend
 import com.github.jonathanxd.codeapi.util.conversion.methodTypeSpec
@@ -46,8 +50,11 @@ import com.github.jonathanxd.codegenutil.CodeGen
 import com.github.jonathanxd.codegenutil.implementer.Implementer
 import com.github.jonathanxd.codegenutil.property.Property
 import com.github.jonathanxd.codegenutil.property.PropertySystem
+import com.github.jonathanxd.iutils.function.collector.BiCollectors
+import com.github.jonathanxd.jwiutils.kt.biStream
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
+import java.util.*
 import java.util.function.Supplier
 
 /**
@@ -78,7 +85,10 @@ object AdapterImplGen {
      * that receives either [T] and [AdapterManager].
      */
     @JvmStatic
-    fun <F : Any, T : Any> genImpl(klass: Class<out F>, type: Class<T>): Class<out F> {
+    @JvmOverloads
+    fun <F : Any, T : Any> genImpl(klass: Class<out F>, type: Class<T>,
+                                   additionalHandlers_: List<AdditionalHandler> = emptyList()): Class<out F> {
+
 
         if (!klass.isInterface)
             throw IllegalArgumentException("The target '$klass' is not an interface.")
@@ -86,26 +96,25 @@ object AdapterImplGen {
         if (!Modifier.isPublic(klass.modifiers))
             throw IllegalArgumentException("The target '$klass' is inaccessible.")
 
+        val additionalHandlers = additionalHandlers_ +
+                klass.getDeclaredAnnotation(Additional::class.java)?.value?.map {
+                    AdditionalHandlerHelper.from(it.java)
+                }.orEmpty()
+
         val fields = klass.getAnnotationsByType(Field::class.java).toMutableList() +
                 klass.getAnnotationsByType(Fields::class.java).flatMap { it.value.toMutableList() }
 
         val shouldIncludeManager = Adapter::class.java.isAssignableFrom(klass)
 
-        val defaultImpls = mutableMapOf<MethodTypeSpec, Method>()
+        val owner = TypeRef(null, "${klass.canonicalName}_$incremental", false)
 
-        val filter = klass.methods.filter {
-            Modifier.isAbstract(it.modifiers)
-                    && !it.isFieldMethod(fields)
-                    && !(getDefaultImpl(klass, it)?.let { x -> defaultImpls.put(it.methodTypeSpec, x); true } ?: false)
-                    && !isInstanceMethod(it)
-                    && (shouldIncludeManager && !isAdapterMethod(it))
+        // Additional
 
-        }
+        val mapOfMethodToHandler = additionalHandlers.biStream {
+            it to it.getMethodsToImplement(owner)
+        }.collect(BiCollectors.toMap())
 
-        val count = filter.size
-
-        if (count > 0)
-            throw IllegalArgumentException("The target '$klass' has '$count' abstract methods. '${filter.map(Method::getName).joinToString()}'")
+        // /Additional
 
         val codeGen = CodeGen()
 
@@ -113,7 +122,17 @@ object AdapterImplGen {
 
         if (shouldIncludeManager) properties += Property(adapterManagerField, AdapterManager::class.java.codeType)
 
-        val codeFields = fields.map {
+        val cproperties = Collections.unmodifiableList(properties.map {
+            VariableRef(it.type, it.name)
+        })
+
+        val additionalProperties = additionalHandlers.flatMap {
+            it.generateAdditionalProperties(cproperties, owner).map { (a, b) -> Property(b, a.codeType) }
+        }
+
+        properties += additionalProperties
+
+        val fcodeFields = fields.map {
             val builder = FieldDeclaration.Builder.builder()
                     .type(it.type.java.codeType)
                     .name(it.value)
@@ -140,6 +159,31 @@ object AdapterImplGen {
             builder.build()
         }
 
+        val ccodeFields = Collections.unmodifiableList(fcodeFields)
+
+        val additionalFields = additionalHandlers.flatMap {
+            it.generateAdditionalFields(ccodeFields, owner)
+        }
+
+        val codeFields = fcodeFields + additionalFields
+
+        val defaultImpls = mutableMapOf<MethodTypeSpec, Method>()
+
+        val filter = klass.methods.filter {
+            Modifier.isAbstract(it.modifiers)
+                    && !it.isFieldMethod(fields)
+                    && !(getDefaultImpl(klass, it)?.let { x -> defaultImpls.put(it.methodTypeSpec, x); true } ?: false)
+                    && !isInstanceMethod(it)
+                    && (shouldIncludeManager && !isAdapterMethod(it))
+                    && !isNotImplementedByAdditional(it, mapOfMethodToHandler)
+                    && !it.isAdditionalPropertyMethod(additionalProperties)
+        }
+
+        val count = filter.size
+
+        if (count > 0)
+            throw IllegalArgumentException("The target '$klass' has '$count' abstract methods. '${filter.joinToString(transform = Method::getName)}'")
+
         codeGen.install(PropertySystem(
                 *properties.toTypedArray()
         ))
@@ -147,8 +191,25 @@ object AdapterImplGen {
         codeGen.install(Implementer { method ->
             val empty = method.parameters.isEmpty()
 
-            val fieldGetter = if (empty) fields.firstOrNull { it.getter == method.name } else null
-            val fieldSetter = if (method.parameters.size == 1) fields.firstOrNull { it.setter == method.name } else null
+            fun Field.toRef() = VariableRef(this.type.java, this.value)
+            fun Property.toRef() = VariableRef(this.type, this.name)
+
+            val additionalGetter =
+                    if(empty) additionalProperties.firstOrNull { method.name == "get${it.name.capitalize()}" }?.toRef()
+                    else null
+
+            val additionalSetter =
+                    if (method.parameters.size == 1) additionalProperties
+                            .firstOrNull { method.name == "set${it.name.capitalize()}" }?.toRef()
+                    else null
+
+            val fieldGetter =
+                    if (empty) fields.firstOrNull { it.getter == method.name }?.toRef()
+                    else null
+
+            val fieldSetter =
+                    if (method.parameters.size == 1) fields.firstOrNull { it.setter == method.name }?.toRef()
+                    else null
 
             if (empty && (method.name == originalInstanceGet || method.name == adapteeInstanceGet)) {
                 return@Implementer method.builder().body(source(
@@ -160,12 +221,12 @@ object AdapterImplGen {
                 )).build()
             } else if (empty && fieldGetter != null) {
                 return@Implementer method.builder().body(source(
-                        returnValue(fieldGetter.type.java.codeType,
-                                accessThisField(fieldGetter.type.java.codeType, fieldGetter.value))
+                        returnValue(fieldGetter.type,
+                                accessThisField(fieldGetter.type, fieldGetter.name))
                 )).build()
             } else if (fieldSetter != null) {
                 return@Implementer method.builder().body(source(
-                        setThisFieldValue(fieldSetter.type.java.codeType, fieldSetter.value,
+                        setThisFieldValue(fieldSetter.type, fieldSetter.name,
                                 method.parameters[0].toVariableAccess()),
                         returnVoid()
                 )).build()
@@ -180,17 +241,70 @@ object AdapterImplGen {
                             returnValue(method.returnType, get.value.toInvocation(InvokeType.INVOKE_STATIC, Access.STATIC,
                                     listOf(Access.THIS) + method.parameters.map { it.toVariableAccess() }))
                     )).build()
-                } else method
+                } else {
+                    val spec = MethodTypeSpec(owner, method.name, method.typeSpec)
+
+                    mapOfMethodToHandler.toList().filter { (_, v) ->
+                        v.any { it.compareTo(spec) == 0 }
+                    }.forEach { (k, _) ->
+                        k.generateImplementation(method, owner).orElse(null)?.let {
+                            return@Implementer it
+                        }
+                    }
+
+                    if (additionalGetter != null) {
+                        return@Implementer method.builder().body(source(
+                                returnValue(additionalGetter.type,
+                                        accessThisField(additionalGetter.type, additionalGetter.name))
+                        )).build()
+                    } else if (additionalSetter != null) {
+                        return@Implementer method.builder().body(source(
+                                setThisFieldValue(additionalSetter.type, additionalSetter.name,
+                                        method.parameters[0].toVariableAccess()),
+                                returnVoid()
+                        )).build()
+                    }
+
+                    return@Implementer method
+                }
             }
         })
 
-        val declaration = codeGen.visit(ClassDeclaration.Builder.builder()
+        val cdeclaration = codeGen.visit(ClassDeclaration.Builder.builder()
                 .modifiers(CodeModifier.PUBLIC, CodeModifier.SYNTHETIC)
                 .fields(codeFields)
-                .qualifiedName("${klass.canonicalName}_$incremental")
+                .outerClass(owner.outerType)
+                .qualifiedName(owner.specifiedName)
                 .superClass(Types.OBJECT)
                 .build()
                 .extend(klass))
+
+        val cfields = Collections.unmodifiableList(cdeclaration.fields)
+        val methods = cdeclaration.methods.toMutableList()
+        val cmethods = Collections.unmodifiableList(methods)
+        val ctr = cdeclaration.constructors.toMutableList()
+        val cctr = Collections.unmodifiableList(ctr)
+
+        val add = additionalHandlers.flatMap {
+            it.generateAdditionalMethodsAndConstructors(cctr, cmethods, cfields, owner).also {
+                it.forEach {
+                    if (it is MethodDeclaration) methods += it
+                    else if (it is ConstructorDeclaration) ctr += it
+                }
+            }
+        }
+
+        val declaration = cdeclaration.builder()
+                .constructors(cdeclaration.constructors.map { lctr ->
+                    lctr.builder().body(lctr.body.toMutable().also { source ->
+                        additionalHandlers.forEach {
+                            source += it.generateAdditionalConstructorBody(lctr, owner)
+                        }
+
+                    }).build()
+                } + add.filterIsInstance<ConstructorDeclaration>())
+                .methods(cdeclaration.methods + add.filterIsInstance<MethodDeclaration>())
+                .build()
 
         val decl = BytecodeGenerator().process(declaration)
 
@@ -198,10 +312,23 @@ object AdapterImplGen {
         return loader.define(decl) as Class<out F>
     }
 
+    private fun isNotImplementedByAdditional(method: Method,
+                                             mapOfMethodToHandler: Map<AdditionalHandler, List<MethodTypeSpec>>): Boolean =
+            method.methodTypeSpec.let { spec ->
+                mapOfMethodToHandler.values.any { it.any { it == spec } }
+            }
+
+
     private fun Method.isFieldMethod(fields: List<Field>) =
             fields.any {
                 (this.parameterCount == 0 && this.name == it.getter)
                         || (this.parameterCount == 1 && this.name == it.setter)
+            }
+
+    private fun Method.isAdditionalPropertyMethod(properties: List<Property>) =
+            properties.any {
+                (this.parameterCount == 0 && this.name == "get${it.name.capitalize()}")
+                        || (this.parameterCount == 1 && this.name == "set${it.name.capitalize()}")
             }
 
 

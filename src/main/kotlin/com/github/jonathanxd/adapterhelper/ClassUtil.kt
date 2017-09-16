@@ -56,12 +56,10 @@ private fun AnnotatedElement.getExplicitAndImplicitAnnotations(set: MutableSet<A
     }
 }
 
-fun Class<*>.hasExplicitOrImplicitAnnotation(type: Class<out Annotation>): Boolean {
-    return this.getExplicitAndImplicitAnnotations().any { it.annotationClass.java == type }
-}
+fun Class<*>.hasExplicitOrImplicitAnnotation(type: Class<out Annotation>): Boolean =
+        this.getExplicitAndImplicitAnnotations().any { it.annotationClass.java == type }
 
 
-fun AnnotatedElement.hasExplicitOrImplicitAnnotation(type: Class<out Annotation>): Boolean {
-    return this.getExplicitAndImplicitAnnotations().any { it.annotationClass.java == type }
-}
+fun AnnotatedElement.hasExplicitOrImplicitAnnotation(type: Class<out Annotation>): Boolean =
+        this.getExplicitAndImplicitAnnotations().any { it.annotationClass.java == type }
 

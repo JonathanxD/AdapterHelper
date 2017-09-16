@@ -1,4 +1,4 @@
-/**
+/*
  *      AdapterHelper - Adapter management helper. <https://github.com/JonathanxD/AdapterHelper>
  *
  *         The MIT License (MIT)
@@ -27,18 +27,11 @@
  */
 package com.github.jonathanxd.adapterhelper
 
-
 /**
- * Stores adapter as strong reference instead of weak reference, this is commonly used when
- * `Adapter` stores states, removal of adapter instance should be manually handled.
- *
- * Use with care, in bigger environments the memory usage may grow significantly if you don't
- * remove unused instances. Other option is to use [WeakAdapteeStorage] to store dynamic fields.
- *
- * If you don't desire this behavior and it is enabled implicitly, or you don't have control of the
- * behavior enabling, you can use [ForceWeakCache].
+ * Forces weak cache even if [StrongCache] is present explicitly or implicitly, mostly used when [StrongCache]
+ * is enabled implicitly or you don't have control of [StrongCache] behavior enabling.
  */
 @MustBeDocumented
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)
-annotation class StrongCache
+annotation class ForceWeakCache

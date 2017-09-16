@@ -1,4 +1,4 @@
-/**
+/*
  *      AdapterHelper - Adapter management helper. <https://github.com/JonathanxD/AdapterHelper>
  *
  *         The MIT License (MIT)
@@ -25,20 +25,39 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.jonathanxd.adapterhelper
+package com.github.jonathanxd.adapterhelper.test;
 
+import com.github.jonathanxd.codeapi.base.CodeModifier;
+import com.github.jonathanxd.codeapi.base.FieldDeclaration;
+import com.github.jonathanxd.codeapi.common.VariableRef;
+import com.github.jonathanxd.codeapi.type.TypeRef;
+import com.github.jonathanxd.iutils.collection.Collections3;
 
-/**
- * Stores adapter as strong reference instead of weak reference, this is commonly used when
- * `Adapter` stores states, removal of adapter instance should be manually handled.
- *
- * Use with care, in bigger environments the memory usage may grow significantly if you don't
- * remove unused instances. Other option is to use [WeakAdapteeStorage] to store dynamic fields.
- *
- * If you don't desire this behavior and it is enabled implicitly, or you don't have control of the
- * behavior enabling, you can use [ForceWeakCache].
- */
-@MustBeDocumented
-@Target(AnnotationTarget.CLASS)
-@Retention(AnnotationRetention.RUNTIME)
-annotation class StrongCache
+import org.jetbrains.annotations.NotNull;
+
+import java.util.Collections;
+import java.util.List;
+
+public class ImplAddTest {
+
+    @NotNull
+    public static List<FieldDeclaration> generateAdditionalFields(@NotNull List<FieldDeclaration> fields,
+                                                                  @NotNull TypeRef owner) {
+        return Collections3.listOf(
+                FieldDeclaration.Builder.builder()
+                        .modifiers(CodeModifier.PRIVATE, CodeModifier.FINAL)
+                        .type(String.class)
+                        .name("str")
+                .build()
+        );
+    }
+
+    @NotNull
+    public static List<VariableRef> generateAdditionalProperties(@NotNull List<VariableRef> currentProperties,
+                                                                 @NotNull TypeRef owner) {
+        return Collections3.listOf(
+                new VariableRef(String.class, "ss")
+        );
+    }
+
+}

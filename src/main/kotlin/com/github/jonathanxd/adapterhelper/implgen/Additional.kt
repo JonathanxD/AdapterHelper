@@ -1,4 +1,4 @@
-/**
+/*
  *      AdapterHelper - Adapter management helper. <https://github.com/JonathanxD/AdapterHelper>
  *
  *         The MIT License (MIT)
@@ -25,20 +25,16 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.jonathanxd.adapterhelper
+package com.github.jonathanxd.adapterhelper.implgen
 
+import com.github.jonathanxd.adapterhelper.StrongCache
+import kotlin.reflect.KClass
 
 /**
- * Stores adapter as strong reference instead of weak reference, this is commonly used when
- * `Adapter` stores states, removal of adapter instance should be manually handled.
- *
- * Use with care, in bigger environments the memory usage may grow significantly if you don't
- * remove unused instances. Other option is to use [WeakAdapteeStorage] to store dynamic fields.
- *
- * If you don't desire this behavior and it is enabled implicitly, or you don't have control of the
- * behavior enabling, you can use [ForceWeakCache].
+ * Specifies additional handlers. Adding this annotation also enables [StrongCache]. You can also add
+ * [com.github.jonathanxd.adapterhelper.ForceWeakCache] to disable this behavior.
  */
-@MustBeDocumented
-@Target(AnnotationTarget.CLASS)
+@StrongCache
 @Retention(AnnotationRetention.RUNTIME)
-annotation class StrongCache
+@Target(AnnotationTarget.CLASS)
+annotation class Additional(vararg val value: KClass<*>)

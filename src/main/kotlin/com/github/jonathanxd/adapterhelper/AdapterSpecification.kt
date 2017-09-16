@@ -48,6 +48,7 @@ class AdapterSpecification<E : Any, T : Any> private constructor(
      * True if this adapter [instance] should be strong cached.
      */
     fun strongCache(instance: T) = instance::class.java.hasExplicitOrImplicitAnnotation(StrongCache::class.java)
+            && !instance::class.java.hasExplicitOrImplicitAnnotation(ForceWeakCache::class.java)
 
     /**
      * Create the adapter class instance.
@@ -56,9 +57,7 @@ class AdapterSpecification<E : Any, T : Any> private constructor(
      * @param manager Adapter manager.
      * @return Adapter instance.
      */
-    fun create(target: E, manager: AdapterManager): T {
-        return this.factory(target, manager)
-    }
+    fun create(target: E, manager: AdapterManager): T = this.factory(target, manager)
 
     override fun hashCode(): Int = Objects.hash(this.adapterClass, this.adapteeClass)
 
@@ -112,12 +111,39 @@ class AdapterSpecification<E : Any, T : Any> private constructor(
          * @return Specification.
          */
         @JvmStatic
-        fun <E : Any, T : Any> createFromInterface(adapterInterface: Class<out T>, adapterClass: Class<T>, adapteeClass: Class<E>): AdapterSpecification<E, T> {
-            val ctr = AdapterImplGen.genImpl(adapterInterface, adapteeClass).getDeclaredConstructor(adapteeClass, AdapterManager::class.java)
+        fun <E : Any, T : Any> createFromInterface(adapterInterface: Class<out T>,
+                                                   adapterClass: Class<T>, adapteeClass: Class<E>): AdapterSpecification<E, T> {
+            val ctr = AdapterImplGen.genImpl(adapterInterface, adapteeClass)
+                    .getDeclaredConstructor(adapteeClass, AdapterManager::class.java)
+
+            // Don't call createFromInterface variable to keep `ctr` cached out of factory scope.
 
             return create({ e, manager ->
                 @Suppress("UNCHECKED_CAST")
                 ctr.newInstance(e, manager)
+            }, adapterClass, adapteeClass)
+        }
+
+        /**
+         * Creates an adapter specification using [AdapterImplGen] to create adapter class.
+         *
+         * Requires CodeAPI, CodeAPI-BytecodeWriter and CodeGenUtil
+         *
+         * @param adapterInterface Interface which adapts [adapteeClass].
+         * @param adapterClass Adapter which defines the adapt standard.
+         * @param adapteeClass Adapted class
+         * @param factory Factory of instance of generate class.
+         * @return Specification.
+         */
+        @JvmStatic
+        fun <E : Any, T : Any> createFromInterface(adapterInterface: Class<out T>,
+                                                   adapterClass: Class<T>,
+                                                   adapteeClass: Class<E>,
+                                                   factory: (genClass: Class<*>, e: E, manager: AdapterManager) -> T): AdapterSpecification<E, T> {
+            val klass = AdapterImplGen.genImpl(adapterInterface, adapteeClass)
+
+            return create({ e, manager ->
+                factory(klass, e, manager)
             }, adapterClass, adapteeClass)
         }
 
