@@ -255,7 +255,8 @@ object AdapterImplGen {
                     val spec = MethodTypeSpec(owner, method.name, method.typeSpec)
 
                     mapOfMethodToHandler.toList().filter { (_, v) ->
-                        v.any { it.compareTo(spec) == 0 }
+                        v.any { it.methodName == spec.methodName
+                                && it.typeSpec.isConreteEq(spec.typeSpec) }
                     }.forEach { (k, _) ->
                         k.generateImplementation(method, owner, klass, typedDataGet(k)).orElse(null)?.let {
                             return@Implementer it
@@ -325,7 +326,10 @@ object AdapterImplGen {
     private fun isNotImplementedByAdditional(method: Method,
                                              mapOfMethodToHandler: Map<AdditionalHandler, List<MethodTypeSpec>>): Boolean =
             method.methodTypeSpec.let { spec ->
-                mapOfMethodToHandler.values.any { it.any { it == spec } }
+                mapOfMethodToHandler.values.any { it.any {
+                    it.methodName == spec.methodName
+                            && it.typeSpec.isConreteEq(spec.typeSpec) }
+                }
             }
 
 
