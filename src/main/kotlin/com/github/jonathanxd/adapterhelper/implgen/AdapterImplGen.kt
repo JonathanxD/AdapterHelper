@@ -52,6 +52,7 @@ import com.github.jonathanxd.codegenutil.property.Property
 import com.github.jonathanxd.codegenutil.property.PropertySystem
 import com.github.jonathanxd.iutils.data.TypedData
 import com.github.jonathanxd.iutils.function.collector.BiCollectors
+import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.jonathanxd.jwiutils.kt.biStream
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
@@ -102,12 +103,14 @@ object AdapterImplGen {
                     AdditionalHandlerHelper.from(it.java)
                 }.orEmpty()
 
-        val handlerDataMap = additionalHandlers.biStream {
-            it to TypedData()
-        }.collect(BiCollectors.toMap())
+        val handlerDataMap = mutableMapOf<AdditionalHandler, TypedData>()
 
         val typedDataGet: (AdditionalHandler) -> TypedData = {
-            handlerDataMap.putIfAbsent(it, TypedData())!!
+            handlerDataMap.computeIfAbsent(it, {
+                val data = TypedData()
+                data.set("interface", type, TypeInfo.of(Class::class.java))
+                data
+            })
         }
 
         val fields = klass.getAnnotationsByType(Field::class.java).toMutableList() +

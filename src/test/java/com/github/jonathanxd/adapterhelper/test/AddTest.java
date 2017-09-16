@@ -67,6 +67,7 @@ public class AddTest {
         System.out.println(myPerson.getParents());
         System.out.println(myPerson.getName());
         System.out.println(myPerson.getSs());
+        System.out.println(myPerson.p());
 
     }
 
@@ -78,6 +79,8 @@ public class AddTest {
         List<Person> getParents();
 
         String getSs();
+
+        Class<?> p();
     }
 
     @Field(value = "parents", type = List.class /*List<MyPerson>*/, getter = "getParents", defaultValueProvider = ListProvider.class)

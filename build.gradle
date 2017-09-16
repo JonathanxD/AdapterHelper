@@ -19,7 +19,7 @@ plugins {
 }
 
 group 'com.github.jonathanxd'
-version '1.7.2'
+version '1.7.3'
 
 allprojects {
     apply plugin: 'idea'
