@@ -50,6 +50,7 @@ import com.github.jonathanxd.codegenutil.CodeGen
 import com.github.jonathanxd.codegenutil.implementer.Implementer
 import com.github.jonathanxd.codegenutil.property.Property
 import com.github.jonathanxd.codegenutil.property.PropertySystem
+import com.github.jonathanxd.iutils.data.TypedData
 import com.github.jonathanxd.iutils.function.collector.BiCollectors
 import com.github.jonathanxd.jwiutils.kt.biStream
 import java.lang.reflect.Method
@@ -101,6 +102,14 @@ object AdapterImplGen {
                     AdditionalHandlerHelper.from(it.java)
                 }.orEmpty()
 
+        val handlerDataMap = additionalHandlers.biStream {
+            it to TypedData()
+        }.collect(BiCollectors.toMap())
+
+        val typedDataGet: (AdditionalHandler) -> TypedData = {
+            handlerDataMap.putIfAbsent(it, TypedData())!!
+        }
+
         val fields = klass.getAnnotationsByType(Field::class.java).toMutableList() +
                 klass.getAnnotationsByType(Fields::class.java).flatMap { it.value.toMutableList() }
 
@@ -111,7 +120,7 @@ object AdapterImplGen {
         // Additional
 
         val mapOfMethodToHandler = additionalHandlers.biStream {
-            it to it.getMethodsToImplement(owner)
+            it to it.getMethodsToImplement(owner, klass, typedDataGet(it))
         }.collect(BiCollectors.toMap())
 
         // /Additional
@@ -127,7 +136,8 @@ object AdapterImplGen {
         })
 
         val additionalProperties = additionalHandlers.flatMap {
-            it.generateAdditionalProperties(cproperties, owner).map { (a, b) -> Property(b, a.codeType) }
+            it.generateAdditionalProperties(cproperties, owner, klass, typedDataGet(it))
+                    .map { (a, b) -> Property(b, a.codeType) }
         }
 
         properties += additionalProperties
@@ -162,7 +172,7 @@ object AdapterImplGen {
         val ccodeFields = Collections.unmodifiableList(fcodeFields)
 
         val additionalFields = additionalHandlers.flatMap {
-            it.generateAdditionalFields(ccodeFields, owner)
+            it.generateAdditionalFields(ccodeFields, owner, klass, typedDataGet(it))
         }
 
         val codeFields = fcodeFields + additionalFields
@@ -247,7 +257,7 @@ object AdapterImplGen {
                     mapOfMethodToHandler.toList().filter { (_, v) ->
                         v.any { it.compareTo(spec) == 0 }
                     }.forEach { (k, _) ->
-                        k.generateImplementation(method, owner).orElse(null)?.let {
+                        k.generateImplementation(method, owner, klass, typedDataGet(k)).orElse(null)?.let {
                             return@Implementer it
                         }
                     }
@@ -286,7 +296,7 @@ object AdapterImplGen {
         val cctr = Collections.unmodifiableList(ctr)
 
         val add = additionalHandlers.flatMap {
-            it.generateAdditionalMethodsAndConstructors(cctr, cmethods, cfields, owner).also {
+            it.generateAdditionalMethodsAndConstructors(cctr, cmethods, cfields, owner, klass, typedDataGet(it)).also {
                 it.forEach {
                     if (it is MethodDeclaration) methods += it
                     else if (it is ConstructorDeclaration) ctr += it
@@ -298,7 +308,7 @@ object AdapterImplGen {
                 .constructors(cdeclaration.constructors.map { lctr ->
                     lctr.builder().body(lctr.body.toMutable().also { source ->
                         additionalHandlers.forEach {
-                            source += it.generateAdditionalConstructorBody(lctr, owner)
+                            source += it.generateAdditionalConstructorBody(lctr, owner, klass, typedDataGet(it))
                         }
 
                     }).build()

@@ -35,6 +35,7 @@ import com.github.jonathanxd.codeapi.base.MethodDeclarationBase;
 import com.github.jonathanxd.codeapi.common.MethodTypeSpec;
 import com.github.jonathanxd.codeapi.common.VariableRef;
 import com.github.jonathanxd.codeapi.type.TypeRef;
+import com.github.jonathanxd.iutils.data.TypedData;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -58,11 +59,16 @@ public interface AdditionalHandler {
      *
      * @param fields Current fields (without handler additions).
      * @param owner  Owner.
+     * @param base   Base class that {@link TypeRef} extends (or implements).
+     * @param data   Additional data registered by the handler and persisted during generation
+     *               process.
      * @return Additional fields.
      */
     @NotNull
     default List<FieldDeclaration> generateAdditionalFields(@NotNull List<FieldDeclaration> fields,
-                                                            @NotNull TypeRef owner) {
+                                                            @NotNull TypeRef owner,
+                                                            @NotNull Class<?> base,
+                                                            @NotNull TypedData data) {
         return Collections.emptyList();
     }
 
@@ -72,11 +78,16 @@ public interface AdditionalHandler {
      *
      * @param currentProperties Current properties (without handler additions).
      * @param owner             Owner of the constructor.
+     * @param base              Base class that {@link TypeRef} extends (or implements).
+     * @param data              Additional data registered by the handler and persisted during
+     *                          generation process.
      * @return Additional properties.
      */
     @NotNull
     default List<VariableRef> generateAdditionalProperties(@NotNull List<VariableRef> currentProperties,
-                                                           @NotNull TypeRef owner) {
+                                                           @NotNull TypeRef owner,
+                                                           @NotNull Class<?> base,
+                                                           @NotNull TypedData data) {
         return Collections.emptyList();
     }
 
@@ -86,11 +97,16 @@ public interface AdditionalHandler {
      * @param constructorDeclaration Current constructor declaration definition (without handler
      *                               additions).
      * @param owner                  Owner of the constructor.
+     * @param base                   Base class that {@link TypeRef} extends (or implements).
+     * @param data                   Additional data registered by the handler and persisted during
+     *                               generation process.
      * @return Additional constructor body instructions.
      */
     @NotNull
     default CodeSource generateAdditionalConstructorBody(@NotNull ConstructorDeclaration constructorDeclaration,
-                                                         @NotNull TypeRef owner) {
+                                                         @NotNull TypeRef owner,
+                                                         @NotNull Class<?> base,
+                                                         @NotNull TypedData data) {
         return CodeSource.empty();
     }
 
@@ -98,10 +114,15 @@ public interface AdditionalHandler {
      * Returns the specification of that methods this class is capable to implement.
      *
      * @param owner Owner class.
+     * @param base  Base class that {@link TypeRef} extends (or implements).
+     * @param data  Additional data registered by the handler and persisted during generation
+     *              process.
      * @return Specification of methods that this class is capable to implement.
      */
     @NotNull
-    default List<MethodTypeSpec> getMethodsToImplement(@NotNull TypeRef owner) {
+    default List<MethodTypeSpec> getMethodsToImplement(@NotNull TypeRef owner,
+                                                       @NotNull Class<?> base,
+                                                       @NotNull TypedData data) {
         return Collections.emptyList();
     }
 
@@ -110,18 +131,23 @@ public interface AdditionalHandler {
      *
      * @param declaration Method declaration to generate implementation.
      * @param owner       Owner of method declaration.
+     * @param base        Base class that {@link TypeRef} extends (or implements).
+     * @param data        Additional data registered by the handler and persisted during generation
+     *                    process.
      * @return {@link Optional} of {@link MethodDeclaration} with implementation, or empty {@link
      * Optional} if implementation cannot be generated.
      */
     @NotNull
     default Optional<MethodDeclaration> generateImplementation(@NotNull MethodDeclaration declaration,
-                                                               @NotNull TypeRef owner) {
+                                                               @NotNull TypeRef owner,
+                                                               @NotNull Class<?> base,
+                                                               @NotNull TypedData data) {
         return Optional.empty();
     }
 
     /**
      * Generates additional methods and constructors, called after {@link
-     * #generateImplementation(MethodDeclaration, TypeRef)}.
+     * #generateImplementation(MethodDeclaration, TypeRef, Class, TypedData)}.
      *
      * @param constructors Current method constructors (with elements added by others {@link
      *                     AdditionalHandler}s).
@@ -130,6 +156,9 @@ public interface AdditionalHandler {
      * @param fields       Current fields to be added to generated type (with elements added by
      *                     others {@link AdditionalHandler}s)..
      * @param owner        Owner of {@code constructors}, {@code methods}, {@code fields}
+     * @param base         Base class that {@link TypeRef} extends (or implements).
+     * @param data         Additional data registered by the handler and persisted during generation
+     *                     process.
      * @return Additional methods and constructors (only {@link MethodDeclaration} and {@link
      * ConstructorDeclaration} are acceptable).
      */
@@ -137,7 +166,9 @@ public interface AdditionalHandler {
     default List<MethodDeclarationBase> generateAdditionalMethodsAndConstructors(@NotNull List<ConstructorDeclaration> constructors,
                                                                                  @NotNull List<MethodDeclaration> methods,
                                                                                  @NotNull List<FieldDeclaration> fields,
-                                                                                 @NotNull TypeRef owner) {
+                                                                                 @NotNull TypeRef owner,
+                                                                                 @NotNull Class<?> base,
+                                                                                 @NotNull TypedData data) {
         return Collections.emptyList();
     }
 

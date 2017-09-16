@@ -32,6 +32,7 @@ import com.github.jonathanxd.codeapi.base.FieldDeclaration;
 import com.github.jonathanxd.codeapi.common.VariableRef;
 import com.github.jonathanxd.codeapi.type.TypeRef;
 import com.github.jonathanxd.iutils.collection.Collections3;
+import com.github.jonathanxd.iutils.data.TypedData;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -42,7 +43,9 @@ public class ImplAddTest {
 
     @NotNull
     public static List<FieldDeclaration> generateAdditionalFields(@NotNull List<FieldDeclaration> fields,
-                                                                  @NotNull TypeRef owner) {
+                                                                  @NotNull TypeRef owner,
+                                                                  @NotNull Class<?> base,
+                                                                  @NotNull TypedData data) {
         return Collections3.listOf(
                 FieldDeclaration.Builder.builder()
                         .modifiers(CodeModifier.PRIVATE, CodeModifier.FINAL)
@@ -54,7 +57,9 @@ public class ImplAddTest {
 
     @NotNull
     public static List<VariableRef> generateAdditionalProperties(@NotNull List<VariableRef> currentProperties,
-                                                                 @NotNull TypeRef owner) {
+                                                                 @NotNull TypeRef owner,
+                                                                 @NotNull Class<?> base,
+                                                                 @NotNull TypedData data) {
         return Collections3.listOf(
                 new VariableRef(String.class, "ss")
         );
