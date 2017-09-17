@@ -19,7 +19,7 @@ plugins {
 }
 
 group 'com.github.jonathanxd'
-version '1.7.8'
+version '1.7.9'
 
 allprojects {
     apply plugin: 'idea'
@@ -114,10 +114,11 @@ subprojects {
 
 allprojects {
     dependencies {
-        compile 'com.github.JonathanxD:JwIUtils:4.7.7'
-        compile 'com.github.JonathanxD:CodeAPI-BytecodeWriter:alpha-4.0.0-bytecode-37'
-        compile 'com.github.JonathanxD:CodeProxy:2.2.6'
-        compile 'com.github.JonathanxD:CodeGenUtil:1.2.12'
+        compile 'com.github.JonathanxD:JwIUtils:4.7.8'
+        compile 'com.github.JonathanxD:CodeAPI:4.0.0.1-beta'
+        compile 'com.github.JonathanxD.CodeAPI-BytecodeWriter:CodeAPI-BytecodeWriter:4.0.0.2-beta-bytecode'
+        compile 'com.github.JonathanxD:CodeProxy:2.2.7'
+        compile 'com.github.JonathanxD:CodeGenUtil:1.2.13'
         compile "org.jetbrains.kotlin:kotlin-stdlib-jre8:$kotlin_version"
         testCompile group: 'junit', name: 'junit', version: '4.12'
     }
