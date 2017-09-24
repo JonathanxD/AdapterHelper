@@ -29,8 +29,7 @@ package com.github.jonathanxd.adapterhelper.implgen.add;
 
 import com.github.jonathanxd.codeproxy.CodeProxy;
 import com.github.jonathanxd.codeproxy.InvokeSuper;
-
-import java.lang.invoke.MethodHandle;
+import com.github.jonathanxd.codeproxy.gen.DirectInvocationCustom;
 
 /**
  * Additional handler proxy factory.
@@ -38,16 +37,16 @@ import java.lang.invoke.MethodHandle;
 public class AdditionalHandlerHelper {
 
     public static AdditionalHandler createAdd(Class<?> refc) {
-        return (AdditionalHandler) CodeProxy.newProxyInstance(refc.getClassLoader(), Object.class, new Class<?>[]{AdditionalHandler.class},
-                (instance, methodInfo, args, proxyData) -> {
-                    MethodHandle methodHandle = methodInfo.resolveStatic(refc);
 
-                    if (methodHandle != null) {
-                        return methodHandle.invokeWithArguments(args);
-                    }
+        return (AdditionalHandler) CodeProxy.newProxyInstance(new Class[0], new Object[0], it ->
+                it.superClass(Object.class)
+                        .classLoader(refc.getClassLoader())
+                        .invocationHandler((a, b, c, d) -> InvokeSuper.INSTANCE)
+                        .addInterface(AdditionalHandler.class)
+                        .addCustomGenerator(InvokeSuper.class)
+                        .addCustom(new DirectInvocationCustom.Static(refc))
+        );
 
-                    return InvokeSuper.INVOKE_SUPER;
-                }, new Class[0], new Object[0]);
     }
 
     public static AdditionalHandler from(Class<?> refc) {
