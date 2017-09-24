@@ -47,20 +47,20 @@ import java.util.*
  * Documentation Unification:
  *
  * As this is class have too much functions with same arguments and the main different is that some of them
- * are variants which returns or receives a different type or only have a little special behavior, we unified (or aggregated? or..
+ * are variants that returns or receives a different type or only have a little special behavior, we unified (or aggregated? or..
  * pasted everything below?) all the documentation here.
  *
  * `adapt` prefixed functions:
  *
- * Adapt/Wrap the instance into a type which matches another type (by assignability/hierarchy - but no order is applied).
+ * Adapt/Wrap the instance into a type that matches another type (by assignability/hierarchy - but no order is applied).
  *
  * Parameters:
  *
  * - Adaptee (`adaptee`): Source type to adapt
- * - Instance (`instance`): Instance of `adaptee` type which should be adapted.
+ * - Instance (`instance`): Instance of `adaptee` type that should be adapted.
  * - Target (`toClass` or `toClasses`): May be a single [Class], multiple [Classes][Class] or no one class (zero-sized array).
- *   - Single class: Wraps into a type which is assignable to this class.
- *   - Multiple classes: Wraps into a type which is assignable to **all** specified classes.
+ *   - Single class: Wraps into a type that is assignable to this class.
+ *   - Multiple classes: Wraps into a type that is assignable to **all** specified classes.
  *   - No one class: Adapt to first found type regardless hierarchy.
  *
  * `asAny` suffixed functions:
@@ -88,7 +88,7 @@ import java.util.*
  * - From (`from`): Source type to convert
  * - To (`to`): Target type to convert (output type)
  * - Input (`input`): Input instance of type `from` to convert to a instance of type `to`
- * - Adapter (`adapter`): Adapter which requested conversion (optional).
+ * - Adapter (`adapter`): Adapter that requested conversion (optional).
  *
  * `Unchecked` suffixed functions:
  *
@@ -99,11 +99,11 @@ import java.util.*
  *
  * `Exact`:
  *
- * Resolution strategy which lookups for exact types on the storage.
+ * Resolution strategy that lookups for exact types on the storage.
  *
  * `Assignable` (**default**):
  *
- * Resolution strategy which first lookups for exact types on the storage, and them lookup
+ * Resolution strategy that first lookups for exact types on the storage, and them lookup
  * for assignable types. This is default because you commonly work with interfaces, and `exact lookup`
  * does not work with implementation types unless you register them or lookup using interface type.
  *
@@ -174,7 +174,7 @@ open class AdapterManager {
     }
 
     /**
-     * Registers [converter] which converts [from] type [I] [to] type [O].
+     * Registers [converter] that converts [from] type [I] [to] type [O].
      */
     fun <I : Any, O : Any> registerConverter(from: Class<I>, to: Class<O>, converter: Converter<I, O>) {
         this.converterMap.put(Pair.of<Class<*>, Class<*>>(from, to), converter)
@@ -187,7 +187,7 @@ open class AdapterManager {
 
 
     /**
-     * Unregisters the converter which converts [from] type [I] [to] type [O].
+     * Unregisters the converter that converts [from] type [I] [to] type [O].
      */
     @Suppress("UNCHECKED_CAST")
     fun <I : Any, O : Any> unregisterConverter(from: Class<I>, to: Class<O>) {
@@ -207,14 +207,14 @@ open class AdapterManager {
     }
 
     /**
-     * Gets the [Converter] which converts [from] type [I] [to] type [O].
+     * Gets the [Converter] that converts [from] type [I] [to] type [O].
      */
     fun <I : Any, O : Any> getConverter(from: Class<I>, to: Class<O>): Optional<Converter<in I, out O>> {
         return this.getAssignableConverter(from, to)
     }
 
     /**
-     * Gets the [Converter] which converts [from] type [I] [to] type [O]. If not found, throws an exception.
+     * Gets the [Converter] that converts [from] type [I] [to] type [O]. If not found, throws an exception.
      */
     fun <I : Any, O : Any> getConverterUnchecked(from: Class<I>, to: Class<O>): Converter<in I, out O> {
         return Require.require(this.getConverter(from, to), "Can't find a converter that converts from '" + from.canonicalName + "' to '" + to.canonicalName + "'!")
@@ -361,7 +361,7 @@ open class AdapterManager {
     }
 
     /**
-     * Creates an wrapper list which delegates calls to wrapped set and adapt values calling [AdapterManager] methods.
+     * Creates an wrapper list that delegates calls to wrapped set and adapt values calling [AdapterManager] methods.
      * This list wrapper will *adapt* values of type [E] of [instanceList]
      * to values of type [O] (and vice-versa when needed).
      */
@@ -370,7 +370,7 @@ open class AdapterManager {
             AdapterList(instanceList, toClass, adaptee, this)
 
     /**
-     * Creates an wrapper set which delegates calls to wrapped set and adapt values calling [AdapterManager] methods.
+     * Creates an wrapper set that delegates calls to wrapped set and adapt values calling [AdapterManager] methods.
      * This set wrapper will *adapt* values of type [E] of [instanceSet]
      * to values of type [O] (and vice-versa when needed).
      */
@@ -379,7 +379,7 @@ open class AdapterManager {
             AdapterSet(instanceSet, toClass, adaptee, this)
 
     /**
-     * Creates an wrapper collection which delegates calls to wrapped collection and adapt values calling [AdapterManager] methods.
+     * Creates an wrapper collection that delegates calls to wrapped collection and adapt values calling [AdapterManager] methods.
      * This collection wrapper will *adapt* values of type [E] of [instanceCollection]
      * to values of type [O] (and vice-versa when needed).
      */
@@ -391,7 +391,7 @@ open class AdapterManager {
 
 
     /**
-     * Creates an wrapper map which delegates calls to wrapped map and adapt values calling [AdapterManager] methods.
+     * Creates an wrapper map that delegates calls to wrapped map and adapt values calling [AdapterManager] methods.
      * This map wrapper will *adapt* keys of type [KE] and values of type [VE] of [instanceMap] to keys and values
      * of types [KO] and [VO] consecutively (and vice-versa when needed).
      */
@@ -535,7 +535,7 @@ open class AdapterManager {
     }
 
     /**
-     * Removes strong cache entry of [adapteeInstance] which was adapted by adapter specified by [specification],
+     * Removes strong cache entry of [adapteeInstance] that was adapted by adapter specified by [specification],
      * and returns remove adapter instance, or null if not present.
      */
     fun uncacheStrong(adapteeInstance: Any, specification: AdapterSpecification<*, *>): Any? =
@@ -650,7 +650,7 @@ open class AdapterManager {
     }
 
     /**
-     * Creates a [Builder] instance which allows a construction two way adapter helper instance ([Builder.FromTo]).
+     * Creates a [Builder] instance that allows a construction two way adapter helper instance ([Builder.FromTo]).
      */
     fun builder(): Builder = ABuilder()
 

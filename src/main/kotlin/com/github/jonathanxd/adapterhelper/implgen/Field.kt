@@ -34,12 +34,12 @@ import kotlin.reflect.KClass
 /**
  * Marks to [AdapterImplGen] generate a specific field in `Adapter` interface.
  *
- * Obs: All interfaces which contains [Field] instance is implicitly annotated with [StrongCache].
+ * Obs: All interfaces that contains [Field] instance is implicitly annotated with [StrongCache].
  *
  * @property value Name of the field
  * @property getter Name of getter (empty for absent).
  * @property setter Name of setter (empty for absent).
- * @property defaultValueProvider Supplier which provides default value (should have a `INSTANCE` field).
+ * @property defaultValueProvider Supplier that provides default value (should have a `INSTANCE` field).
  */
 @MustBeDocumented
 @StrongCache

@@ -32,7 +32,7 @@ import org.jetbrains.annotations.Contract
 /**
  * Builder of adaptation target.
  *
- * This is a helper class which removes the needed to pass type arguments to `adapt` functions
+ * This is a helper class that removes the needed to pass type arguments to `adapt` functions
  * every time you need to adapt a instance. The builder is linked to an [AdapterManager] and delegates
  * [FromTo.adapt] call to it.
  *
