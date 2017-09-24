@@ -127,7 +127,7 @@ public class AdapterTest {
     }
 
     @Test
-    public void testMap() { // ≃ 3.4s
+    public void testMap() {
         AdapterManager adapterManager = AdapterManager.create();
 
         AdapterSpecification<OldPerson, SimpleAdapter> adapterSpecification = AdapterSpecification.create(SimpleAdapter::new, SimpleAdapter.class, OldPerson.class);

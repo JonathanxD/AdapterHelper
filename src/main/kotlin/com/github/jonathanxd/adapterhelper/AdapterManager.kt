@@ -30,6 +30,10 @@ package com.github.jonathanxd.adapterhelper
 import com.github.jonathanxd.adapterhelper.wrapper.AdapterList
 import com.github.jonathanxd.adapterhelper.wrapper.AdapterMap
 import com.github.jonathanxd.adapterhelper.wrapper.AdapterSet
+import com.github.jonathanxd.adapterhelper.wrapper.func.AdapterCollectionFunc
+import com.github.jonathanxd.adapterhelper.wrapper.func.AdapterListFunc
+import com.github.jonathanxd.adapterhelper.wrapper.func.AdapterMapFunc
+import com.github.jonathanxd.adapterhelper.wrapper.func.AdapterSetFunc
 import com.github.jonathanxd.iutils.`object`.Pair
 import com.github.jonathanxd.iutils.map.WeakValueHashMap
 import com.github.jonathanxd.iutils.optional.Require
@@ -248,13 +252,13 @@ open class AdapterManager {
         if (!adapterSpecificationOpt.isPresent) {
 
             // Check if instance if adapter base
-            if(instance is AdapterBase<*>) {
+            if (instance is AdapterBase<*>) {
                 // Gets original instance/adapted instance
                 val origin = instance.originalInstance
 
                 // If target classes is empty or original instance is instance of all types
-                if(toClasses.isEmpty() || toClasses.all { it.isInstance(origin) })
-                    // Returns original instance.
+                if (toClasses.isEmpty() || toClasses.all { it.isInstance(origin) })
+                // Returns original instance.
                     return Optional.of(origin)
             }
 
@@ -283,7 +287,7 @@ open class AdapterManager {
         val cacheGet = cache[pair]
 
         // If not null, returns cached adapter instance.
-        if(cacheGet != null) {
+        if (cacheGet != null) {
             return Optional.of(cacheGet as E)
         }
 
@@ -291,7 +295,7 @@ open class AdapterManager {
         val strongCacheGet = strongCache[pair]
 
         // If not null, returns cached adapter instance.
-        if(strongCacheGet != null) {
+        if (strongCacheGet != null) {
             return Optional.of(strongCacheGet as E)
         }
 
@@ -299,7 +303,7 @@ open class AdapterManager {
         val t = adapterSpecification.create(instance, this)
 
         // If should strong cache
-        if(adapterSpecification.strongCache(t)) {
+        if (adapterSpecification.strongCache(t)) {
             // Strong cache the instance
             strongCache[pair] = t
         } else {
@@ -362,7 +366,7 @@ open class AdapterManager {
      * to values of type [O] (and vice-versa when needed).
      */
     @Suppress("UNCHECKED_CAST")
-    fun <E : Any, O: Any> createAdapterList(adaptee: Class<E>, instanceList: List<E>, toClass: Class<O>): List<O> =
+    fun <E : Any, O : Any> createAdapterList(adaptee: Class<E>, instanceList: List<E>, toClass: Class<O>): List<O> =
             AdapterList(instanceList, toClass, adaptee, this)
 
     /**
@@ -371,7 +375,7 @@ open class AdapterManager {
      * to values of type [O] (and vice-versa when needed).
      */
     @Suppress("UNCHECKED_CAST")
-    fun <E : Any, O: Any> createAdapterSet(adaptee: Class<E>, instanceSet: Set<E>, toClass: Class<O>): Set<O> =
+    fun <E : Any, O : Any> createAdapterSet(adaptee: Class<E>, instanceSet: Set<E>, toClass: Class<O>): Set<O> =
             AdapterSet(instanceSet, toClass, adaptee, this)
 
     /**
@@ -380,9 +384,9 @@ open class AdapterManager {
      * to values of type [O] (and vice-versa when needed).
      */
     @Suppress("UNCHECKED_CAST")
-    fun <E : Any, O: Any> createAdapterCollection(adaptee: Class<E>,
-                                                  instanceCollection: Collection<E>,
-                                                  toClass: Class<O>): Collection<O> =
+    fun <E : Any, O : Any> createAdapterCollection(adaptee: Class<E>,
+                                                   instanceCollection: Collection<E>,
+                                                   toClass: Class<O>): Collection<O> =
             AdapterList(instanceCollection, toClass, adaptee, this)
 
 
@@ -392,17 +396,83 @@ open class AdapterManager {
      * of types [KO] and [VO] consecutively (and vice-versa when needed).
      */
     @Suppress("UNCHECKED_CAST")
-    fun <KE : Any, VE: Any, KO: Any, VO: Any> createAdapterMap(adapteeKey: Class<KE>, adapteeValue: Class<VE>,
-                                                               instanceMap: Map<KE, VE>,
-                                                               toKey: Class<KO>, toValue: Class<VO>): Map<KO, VO> =
+    fun <KE : Any, VE : Any, KO : Any, VO : Any> createAdapterMap(adapteeKey: Class<KE>, adapteeValue: Class<VE>,
+                                                                  instanceMap: Map<KE, VE>,
+                                                                  toKey: Class<KO>, toValue: Class<VO>): Map<KO, VO> =
             AdapterMap(instanceMap, toKey, toValue, adapteeKey, adapteeValue, this)
 
+    // Dynamic
+
+    /**
+     * Creates an wrapper list that delegates calls to wrapped set and adapt values calling [AdapterManager] methods.
+     * This list wrapper will *adapt* values of type [E] of [instanceList]
+     * to values of type [O] (and vice-versa when needed).
+     *
+     * This variant respects type inheritance.
+     */
+    @Suppress("UNCHECKED_CAST")
+    fun <E : Any, O : Any> createDynamicAdapterList(adaptee: Class<E>, instanceList: List<E>, toClass: Class<O>): List<O> =
+            AdapterListFunc<O, E>(instanceList,
+                    LookupFunc(this, toClass, adaptee),
+                    LookupFunc(this, adaptee, toClass),
+                    this)
+
+    /**
+     * Creates an wrapper set that delegates calls to wrapped set and adapt values calling [AdapterManager] methods.
+     * This set wrapper will *adapt* values of type [E] of [instanceSet]
+     * to values of type [O] (and vice-versa when needed).
+     *
+     * This variant respects type inheritance.
+     */
+    @Suppress("UNCHECKED_CAST")
+    fun <E : Any, O : Any> createDynamicAdapterSet(adaptee: Class<E>, instanceSet: Set<E>, toClass: Class<O>): Set<O> =
+            AdapterSetFunc<O, E>(instanceSet,
+                    LookupFunc(this, toClass, adaptee),
+                    LookupFunc(this, adaptee, toClass),
+                    this)
+
+    /**
+     * Creates an wrapper collection that delegates calls to wrapped collection and adapt values calling [AdapterManager] methods.
+     * This collection wrapper will *adapt* values of type [E] of [instanceCollection]
+     * to values of type [O] (and vice-versa when needed).
+     *
+     * This variant respects type inheritance.
+     */
+    @Suppress("UNCHECKED_CAST")
+    fun <E : Any, O : Any> createDyanmicAdapterCollection(adaptee: Class<E>,
+                                                          instanceCollection: Collection<E>,
+                                                          toClass: Class<O>): Collection<O> =
+            AdapterCollectionFunc<O, E>(instanceCollection,
+                    LookupFunc(this, toClass, adaptee),
+                    LookupFunc(this, adaptee, toClass),
+                    this)
+
+
+    /**
+     * Creates an wrapper map that delegates calls to wrapped map and adapt values calling [AdapterManager] methods.
+     * This map wrapper will *adapt* keys of type [KE] and values of type [VE] of [instanceMap] to keys and values
+     * of types [KO] and [VO] consecutively (and vice-versa when needed).
+     *
+     * This variant respects type inheritance.
+     */
+    @Suppress("UNCHECKED_CAST")
+    fun <KE : Any, VE : Any, KO : Any, VO : Any> createDynamicAdapterMap(adapteeKey: Class<KE>, adapteeValue: Class<VE>,
+                                                                         instanceMap: Map<KE, VE>,
+                                                                         toKey: Class<KO>, toValue: Class<VO>): Map<KO, VO> =
+            AdapterMapFunc<KO, VO, KE, VE>(instanceMap,
+                    LookupFunc(this, toKey, adapteeKey),
+                    LookupFunc(this, toValue, adapteeValue),
+                    LookupFunc(this, adapteeKey, toKey),
+                    LookupFunc(this, adapteeValue, toValue),
+                    this)
+
+    // /Dynamic
 
     /**
      * See [AdapterManager]
      */
     @Suppress("UNCHECKED_CAST")
-    fun <E : Any, O: Any> adaptBase(adaptee: Class<in E>, instance: E, toClasses: Array<Class<*>>): Optional<O> {
+    fun <E : Any, O : Any> adaptBase(adaptee: Class<in E>, instance: E, toClasses: Array<Class<*>>): Optional<O> {
         return this.adaptSingleAsAny(adaptee, instance, toClasses).let {
             if (!it.isPresent && adaptee != instance::class.java)
                 this.adaptSingleAsAny(instance::class.java as Class<in E>, instance, toClasses)
@@ -415,7 +485,7 @@ open class AdapterManager {
      * See [AdapterManager]
      */
     @Suppress("UNCHECKED_CAST")
-    fun <E : Any, O: Any> adapt(adaptee: Class<in E>, instance: E, toClasses: Array<Class<*>>): Optional<O> {
+    fun <E : Any, O : Any> adapt(adaptee: Class<in E>, instance: E, toClasses: Array<Class<*>>): Optional<O> {
         return this.adaptSingleAsAny(adaptee, instance, toClasses) as Optional<O>
     }
 
@@ -423,7 +493,7 @@ open class AdapterManager {
      * See [AdapterManager]
      */
     @Suppress("UNCHECKED_CAST")
-    fun <E : Any, O: Any> adapt(adaptee: Class<in E>, instance: E, toClass: Class<O>): Optional<O> {
+    fun <E : Any, O : Any> adapt(adaptee: Class<in E>, instance: E, toClass: Class<O>): Optional<O> {
         return this.adaptSingleAsAny(adaptee, instance, arrayOf<Class<*>>(toClass)) as Optional<O>
     }
 
@@ -431,14 +501,14 @@ open class AdapterManager {
      * See [AdapterManager]
      */
     @Suppress("UNCHECKED_CAST")
-    fun <E : Any, O: Any> adaptBaseUnchecked(adaptee: Class<in E>, instance: E, toClasses: Array<Class<*>>): O {
+    fun <E : Any, O : Any> adaptBaseUnchecked(adaptee: Class<in E>, instance: E, toClasses: Array<Class<*>>): O {
         return Require.require(this.adaptBase(adaptee, instance, toClasses), "Can't find adapter of '$adaptee' (and of '${instance::class.java}') to '${toClasses.contentToString()}'!")
     }
 
     /**
      * See [AdapterManager]
      */
-    fun <E : Any, O: Any> adaptUnchecked(adaptee: Class<in E>, instance: E, toClass: Class<O>): O {
+    fun <E : Any, O : Any> adaptUnchecked(adaptee: Class<in E>, instance: E, toClass: Class<O>): O {
         return Require.require(this.adapt(adaptee, instance, toClass), "Can't find adapter of '$adaptee' to '$toClass'!")
     }
 
@@ -446,7 +516,7 @@ open class AdapterManager {
      * See [AdapterManager]
      */
     @Suppress("UNCHECKED_CAST")
-    fun <E : Any, O: Any> adaptUnchecked(adaptee: Class<in E>, instance: E, toClasses: Array<Class<*>>): O {
+    fun <E : Any, O : Any> adaptUnchecked(adaptee: Class<in E>, instance: E, toClasses: Array<Class<*>>): O {
         return Require.require(this.adapt(adaptee, instance, toClasses), "Can't find adapter of '" + adaptee + "' to '" + Arrays.toString(toClasses) + "'!")
     }
 
@@ -469,14 +539,14 @@ open class AdapterManager {
      * and returns remove adapter instance, or null if not present.
      */
     fun uncacheStrong(adapteeInstance: Any, specification: AdapterSpecification<*, *>): Any? =
-        this.strongCache.remove(Pair.of(specification, adapteeInstance))
+            this.strongCache.remove(Pair.of(specification, adapteeInstance))
 
     /**
      * Removes all strong cache entry associated to [adapteeInstance] regardless the adapter,
      * and returns true if any value was removed as result of this operation.
      */
     fun uncacheAllStrong(adapteeInstance: Any): Boolean
-        = this.strongCache.entries.removeIf { it.key.second == adapteeInstance }
+            = this.strongCache.entries.removeIf { it.key.second == adapteeInstance }
 
 
     /**
@@ -585,50 +655,50 @@ open class AdapterManager {
     fun builder(): Builder = ABuilder()
 
     inner class ABuilder : Builder {
-        override fun <F: Any> from(type: Class<F>): Builder.From<F> = AFrom(type)
-        override fun <T: Any> to(type: Class<T>): Builder.To<T> = ATo(type)
+        override fun <F : Any> from(type: Class<F>): Builder.From<F> = AFrom(type)
+        override fun <T : Any> to(type: Class<T>): Builder.To<T> = ATo(type)
         override fun <T : Any> to(closestType: Class<T>, types: List<Class<out T>>): Builder.MultiTo<T> {
-            if(types.any { !closestType.isAssignableFrom(it) })
+            if (types.any { !closestType.isAssignableFrom(it) })
                 throw IllegalArgumentException("Can't assign a type of ${types.joinToString()} to closestType: $closestType.")
 
             return AMultiTo(types.toTypedArray())
         }
     }
 
-    inner class AFrom<F: Any>(val from: Class<F>) : Builder.From<F> {
-        override fun <T: Any> to(type: Class<T>): Builder.FromTo<F, T> = AFromTo(from, type)
+    inner class AFrom<F : Any>(val from: Class<F>) : Builder.From<F> {
+        override fun <T : Any> to(type: Class<T>): Builder.FromTo<F, T> = AFromTo(from, type)
         override fun <T : Any> to(closestType: Class<T>, types: List<Class<out T>>): Builder.FromMultiTo<F, T> {
-            if(types.any { !closestType.isAssignableFrom(it) })
+            if (types.any { !closestType.isAssignableFrom(it) })
                 throw IllegalArgumentException("Can't assign a type of ${types.joinToString()} to closestType: $closestType.")
 
             return AFromMultiTo(from, types.toTypedArray())
         }
     }
 
-    inner class ATo<T: Any>(val to: Class<T>): Builder.To<T> {
-        override fun <F: Any> from(type: Class<F>): Builder.FromTo<F, T> = AFromTo(type, to)
+    inner class ATo<T : Any>(val to: Class<T>) : Builder.To<T> {
+        override fun <F : Any> from(type: Class<F>): Builder.FromTo<F, T> = AFromTo(type, to)
     }
 
-    inner class AMultiTo<T: Any>(val to: Array<Class<out T>>): Builder.MultiTo<T> {
+    inner class AMultiTo<T : Any>(val to: Array<Class<out T>>) : Builder.MultiTo<T> {
         override fun <F : Any> from(type: Class<F>): Builder.FromMultiTo<F, T> = AFromMultiTo(type, to)
     }
 
-    inner class AFromTo<F: Any, T: Any>(val from: Class<F>, val to: Class<T>) : Builder.FromTo<F, T> {
+    inner class AFromTo<F : Any, T : Any>(val from: Class<F>, val to: Class<T>) : Builder.FromTo<F, T> {
         private val reverse = ReverseAFromTo(this)
 
         override fun reverse(): Builder.FromTo<T, F> = reverse
-        override fun adapt(instance: F?): T? = if(instance == null) null else adaptUnchecked(from, instance, to)
+        override fun adapt(instance: F?): T? = if (instance == null) null else adaptUnchecked(from, instance, to)
     }
 
-    inner class ReverseAFromTo<F: Any, T: Any>(val origin: AFromTo<T, F>) : Builder.FromTo<F, T> {
+    inner class ReverseAFromTo<F : Any, T : Any>(val origin: AFromTo<T, F>) : Builder.FromTo<F, T> {
 
         override fun reverse(): Builder.FromTo<T, F> = origin
-        override fun adapt(instance: F?): T? = if(instance == null) null else adaptUnchecked(origin.to, instance, origin.from)
+        override fun adapt(instance: F?): T? = if (instance == null) null else adaptUnchecked(origin.to, instance, origin.from)
     }
 
-    inner class AFromMultiTo<F: Any, T: Any>(val from: Class<F>, val to: Array<Class<out T>>) : Builder.FromMultiTo<F, T> {
+    inner class AFromMultiTo<F : Any, T : Any>(val from: Class<F>, val to: Array<Class<out T>>) : Builder.FromMultiTo<F, T> {
         @Suppress("UNCHECKED_CAST")
-        override fun adapt(instance: F?): T? = if(instance == null) null else adaptUnchecked(from, instance, to as Array<Class<*>>)
+        override fun adapt(instance: F?): T? = if (instance == null) null else adaptUnchecked(from, instance, to as Array<Class<*>>)
     }
 
 
