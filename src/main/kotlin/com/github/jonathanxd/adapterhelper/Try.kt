@@ -27,10 +27,9 @@
  */
 package com.github.jonathanxd.adapterhelper
 
-inline fun <T> Try(func: () -> T): Pair<T?, Throwable?> {
+inline fun <T> Try(func: () -> T): Pair<T?, Throwable?> =
     try {
-        return func() to null
+        func() to null
     } catch (t: Throwable) {
-        return null to t
+        null to t
     }
-}

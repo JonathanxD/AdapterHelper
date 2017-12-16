@@ -28,7 +28,11 @@
 package com.github.jonathanxd.adapterhelper
 
 /**
- * Adapter base interface.
+ * Adapter base interface, all adapters of type [T] extends this class. Also,
+ * for classes that does not carry [AdapterManager], or do not need it, should extend [AdapterBase].
+ * Implementations of this class can be generated with [AdapterSpecification.createFromInterface],
+ * this requires that all methods have default implementation (excluding adapter interface methods
+ * such as [adapteeInstance], [originalInstance] and [adapterManager]).
  *
  * @param T Adaptee type.
  */

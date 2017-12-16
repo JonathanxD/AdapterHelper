@@ -27,10 +27,9 @@
  */
 package com.github.jonathanxd.adapterhelper
 
-
 /**
- * Indicates a base adapter, if the class do not extends [Adapter] class it indicates that this class
- * only converts the instance to another.
+ * Base class of all adapters of type [T]. Used in adapter implementations that does not carry
+ * [AdapterManager] or do not need it.
  */
 interface AdapterBase<out T : Any> {
 
