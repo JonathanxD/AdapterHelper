@@ -3,7 +3,7 @@
  *
  *         The MIT License (MIT)
  *
- *      Copyright (c) 2017 TheRealBuggy/JonathanxD (https://github.com/JonathanxD/ & https://github.com/TheRealBuggy/) <jonathan.scripter@programmer.net>
+ *      Copyright (c) 2018 TheRealBuggy/JonathanxD (https://github.com/JonathanxD/ & https://github.com/TheRealBuggy/) <jonathan.scripter@programmer.net>
  *      Copyright (c) contributors
  *
  *
@@ -27,14 +27,14 @@
  */
 package com.github.jonathanxd.adapterhelper.implgen.add;
 
-import com.github.jonathanxd.codeapi.CodeSource;
-import com.github.jonathanxd.codeapi.base.ConstructorDeclaration;
-import com.github.jonathanxd.codeapi.base.FieldDeclaration;
-import com.github.jonathanxd.codeapi.base.MethodDeclaration;
-import com.github.jonathanxd.codeapi.base.MethodDeclarationBase;
-import com.github.jonathanxd.codeapi.common.MethodTypeSpec;
-import com.github.jonathanxd.codeapi.common.VariableRef;
-import com.github.jonathanxd.codeapi.type.TypeRef;
+import com.github.jonathanxd.kores.Instructions;
+import com.github.jonathanxd.kores.base.ConstructorDeclaration;
+import com.github.jonathanxd.kores.base.FieldDeclaration;
+import com.github.jonathanxd.kores.base.MethodDeclaration;
+import com.github.jonathanxd.kores.base.MethodDeclarationBase;
+import com.github.jonathanxd.kores.common.MethodTypeSpec;
+import com.github.jonathanxd.kores.common.VariableRef;
+import com.github.jonathanxd.kores.type.TypeRef;
 import com.github.jonathanxd.iutils.data.TypedData;
 
 import org.jetbrains.annotations.NotNull;
@@ -103,11 +103,11 @@ public interface AdditionalHandler {
      * @return Additional constructor body instructions.
      */
     @NotNull
-    default CodeSource generateAdditionalConstructorBody(@NotNull ConstructorDeclaration constructorDeclaration,
+    default Instructions generateAdditionalConstructorBody(@NotNull ConstructorDeclaration constructorDeclaration,
                                                          @NotNull TypeRef owner,
                                                          @NotNull Class<?> base,
                                                          @NotNull TypedData data) {
-        return CodeSource.empty();
+        return Instructions.empty();
     }
 
     /**

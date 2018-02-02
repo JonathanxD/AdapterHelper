@@ -3,7 +3,7 @@
  *
  *         The MIT License (MIT)
  *
- *      Copyright (c) 2017 TheRealBuggy/JonathanxD (https://github.com/JonathanxD/ & https://github.com/TheRealBuggy/) <jonathan.scripter@programmer.net>
+ *      Copyright (c) 2018 TheRealBuggy/JonathanxD (https://github.com/JonathanxD/ & https://github.com/TheRealBuggy/) <jonathan.scripter@programmer.net>
  *      Copyright (c) contributors
  *
  *
@@ -27,7 +27,7 @@
  */
 package com.github.jonathanxd.adapterhelper.test;
 
-import com.github.jonathanxd.codeproxy.CodeProxy;
+import com.github.jonathanxd.koresproxy.KoresProxy;
 
 import org.junit.Test;
 
@@ -61,9 +61,9 @@ public class ReadmeExamples {
     }
 
     @Test
-    public void codeProxyMethod() { // For fun
-        new CodeProxy_().process(lib1_person);
-        new CodeProxy_().process(lib2_person);
+    public void koresProxyMethod() { // For fun
+        new KoresProxy_().process(lib1_person);
+        new KoresProxy_().process(lib2_person);
     }
 
     @Test
@@ -119,10 +119,10 @@ class JavaProxy {
     }
 }
 
-class CodeProxy_ { // Only an addition to make me happy :D
+class KoresProxy_ { // Only an addition to make me happy :D
 
     public static IPerson getPerson(Object person) {
-        return (IPerson) CodeProxy.newProxyInstance(person.getClass().getClassLoader(), new Class[]{IPerson.class},
+        return (IPerson) KoresProxy.newProxyInstance(person.getClass().getClassLoader(), new Class[]{IPerson.class},
                 (proxy, methodInfo, args, proxyData) ->
                         methodInfo.resolveOrFail(person.getClass()).bindTo(person).invokeWithArguments(args));
     }

@@ -3,7 +3,7 @@
  *
  *         The MIT License (MIT)
  *
- *      Copyright (c) 2017 TheRealBuggy/JonathanxD (https://github.com/JonathanxD/ & https://github.com/TheRealBuggy/) <jonathan.scripter@programmer.net>
+ *      Copyright (c) 2018 TheRealBuggy/JonathanxD (https://github.com/JonathanxD/ & https://github.com/TheRealBuggy/) <jonathan.scripter@programmer.net>
  *      Copyright (c) contributors
  *
  *
@@ -27,17 +27,17 @@
  */
 package com.github.jonathanxd.adapterhelper.test;
 
-import com.github.jonathanxd.codeapi.CodeSource;
-import com.github.jonathanxd.codeapi.base.CodeModifier;
-import com.github.jonathanxd.codeapi.base.FieldDeclaration;
-import com.github.jonathanxd.codeapi.base.MethodDeclaration;
-import com.github.jonathanxd.codeapi.base.TypeSpec;
-import com.github.jonathanxd.codeapi.common.MethodTypeSpec;
-import com.github.jonathanxd.codeapi.common.VariableRef;
-import com.github.jonathanxd.codeapi.factory.Factories;
-import com.github.jonathanxd.codeapi.factory.InvocationFactory;
-import com.github.jonathanxd.codeapi.literal.Literals;
-import com.github.jonathanxd.codeapi.type.TypeRef;
+import com.github.jonathanxd.kores.Instructions;
+import com.github.jonathanxd.kores.base.KoresModifier;
+import com.github.jonathanxd.kores.base.FieldDeclaration;
+import com.github.jonathanxd.kores.base.MethodDeclaration;
+import com.github.jonathanxd.kores.base.TypeSpec;
+import com.github.jonathanxd.kores.common.MethodTypeSpec;
+import com.github.jonathanxd.kores.common.VariableRef;
+import com.github.jonathanxd.kores.factory.Factories;
+import com.github.jonathanxd.kores.factory.InvocationFactory;
+import com.github.jonathanxd.kores.literal.Literals;
+import com.github.jonathanxd.kores.type.TypeRef;
 import com.github.jonathanxd.iutils.collection.Collections3;
 import com.github.jonathanxd.iutils.data.TypedData;
 import com.github.jonathanxd.iutils.type.TypeInfo;
@@ -58,7 +58,7 @@ public class ImplAddTest {
                                                                   @NotNull TypedData data) {
         return Collections3.listOf(
                 FieldDeclaration.Builder.builder()
-                        .modifiers(CodeModifier.PRIVATE, CodeModifier.FINAL)
+                        .modifiers(KoresModifier.PRIVATE, KoresModifier.FINAL)
                         .type(String.class)
                         .name("str")
                 .build()
@@ -97,7 +97,7 @@ public class ImplAddTest {
 
                 return Optional.of(declaration)
                         .map(it -> it.builder()
-                                .body(CodeSource.fromPart(Factories.returnValue(Class.class, Literals.CLASS(itf))))
+                                .body(Instructions.fromPart(Factories.returnValue(Class.class, Literals.CLASS(itf))))
                                 .build());
             }
         }

@@ -1,9 +1,10 @@
 buildscript {
-    ext.kotlin_version = '1.2.10'
-    ext.dokka_version = '0.9.10'
+    ext.kotlin_version = '1.2.20'
+    ext.dokka_version = '0.9.15'
 
     repositories {
         mavenCentral()
+        jcenter()
     }
 
 
@@ -19,7 +20,7 @@ plugins {
 }
 
 group 'com.github.jonathanxd'
-version '1.9.0'
+version '1.10.0'
 
 allprojects {
     apply plugin: 'idea'
@@ -114,12 +115,12 @@ subprojects {
 
 allprojects {
     dependencies {
-        compile 'com.github.JonathanxD:CodeAPI:4.0.0.17-beta'
-        compile 'com.github.JonathanxD.CodeAPI-BytecodeWriter:CodeAPI-BytecodeWriter:4.0.0.22-beta-bytecode'
-        compile 'com.github.JonathanxD:JwIUtils:4.10.0'
-        compile 'com.github.JonathanxD:CodeProxy:2.3.2'
-        compile 'com.github.JonathanxD:CodeGenUtil:1.3.0'
-        compile "org.jetbrains.kotlin:kotlin-stdlib-jre8:$kotlin_version"
+        compile 'com.github.JonathanxD.Kores:Kores:4.0.0.32-beta'
+        compile 'com.github.JonathanxD.Kores-BytecodeWriter:Kores-BytecodeWriter:4.0.0.30-beta-bytecode'
+        compile 'com.github.JonathanxD:JwIUtils:4.14.5'
+        compile 'com.github.JonathanxD:KoresProxy:2.5.0'
+        compile 'com.github.JonathanxD:KoresGenUtil:1.4.2'
+        compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
         testCompile group: 'junit', name: 'junit', version: '4.12'
     }
 

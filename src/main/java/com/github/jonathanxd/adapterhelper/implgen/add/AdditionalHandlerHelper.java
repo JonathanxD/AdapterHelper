@@ -3,7 +3,7 @@
  *
  *         The MIT License (MIT)
  *
- *      Copyright (c) 2017 TheRealBuggy/JonathanxD (https://github.com/JonathanxD/ & https://github.com/TheRealBuggy/) <jonathan.scripter@programmer.net>
+ *      Copyright (c) 2018 TheRealBuggy/JonathanxD (https://github.com/JonathanxD/ & https://github.com/TheRealBuggy/) <jonathan.scripter@programmer.net>
  *      Copyright (c) contributors
  *
  *
@@ -27,9 +27,9 @@
  */
 package com.github.jonathanxd.adapterhelper.implgen.add;
 
-import com.github.jonathanxd.codeproxy.CodeProxy;
-import com.github.jonathanxd.codeproxy.InvokeSuper;
-import com.github.jonathanxd.codeproxy.gen.DirectInvocationCustom;
+import com.github.jonathanxd.koresproxy.KoresProxy;
+import com.github.jonathanxd.koresproxy.InvokeSuper;
+import com.github.jonathanxd.koresproxy.gen.DirectInvocationCustom;
 
 /**
  * Additional handler proxy factory.
@@ -38,7 +38,7 @@ public class AdditionalHandlerHelper {
 
     public static AdditionalHandler createAdd(Class<?> refc) {
 
-        return (AdditionalHandler) CodeProxy.newProxyInstance(new Class[0], new Object[0], it ->
+        return (AdditionalHandler) KoresProxy.newProxyInstance(new Class[0], new Object[0], it ->
                 it.superClass(Object.class)
                         .classLoader(refc.getClassLoader())
                         .invocationHandler((a, b, c, d) -> InvokeSuper.INSTANCE)

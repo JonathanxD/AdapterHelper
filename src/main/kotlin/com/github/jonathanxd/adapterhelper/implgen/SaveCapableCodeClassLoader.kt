@@ -3,7 +3,7 @@
  *
  *         The MIT License (MIT)
  *
- *      Copyright (c) 2017 TheRealBuggy/JonathanxD (https://github.com/JonathanxD/ & https://github.com/TheRealBuggy/) <jonathan.scripter@programmer.net>
+ *      Copyright (c) 2018 TheRealBuggy/JonathanxD (https://github.com/JonathanxD/ & https://github.com/TheRealBuggy/) <jonathan.scripter@programmer.net>
  *      Copyright (c) contributors
  *
  *
@@ -28,9 +28,9 @@
 package com.github.jonathanxd.adapterhelper.implgen
 
 import com.github.jonathanxd.adapterhelper.Debug
-import com.github.jonathanxd.codeapi.base.TypeDeclaration
-import com.github.jonathanxd.codeapi.bytecode.BytecodeClass
-import com.github.jonathanxd.codeapi.bytecode.classloader.CodeClassLoader
+import com.github.jonathanxd.kores.base.TypeDeclaration
+import com.github.jonathanxd.kores.bytecode.BytecodeClass
+import com.github.jonathanxd.kores.bytecode.classloader.CodeClassLoader
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
