@@ -30,17 +30,12 @@ package com.github.jonathanxd.adapterhelper.test;
 import com.github.jonathanxd.adapterhelper.Adapter;
 import com.github.jonathanxd.adapterhelper.AdapterManager;
 import com.github.jonathanxd.adapterhelper.AdapterSpecification;
-import com.github.jonathanxd.iutils.collection.Collections3;
-import com.github.jonathanxd.iutils.list.PredicateArrayList;
 import com.github.jonathanxd.iutils.list.PredicateWrappedList;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.lang.reflect.Array;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

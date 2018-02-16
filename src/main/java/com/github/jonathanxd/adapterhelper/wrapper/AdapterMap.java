@@ -162,8 +162,7 @@ public class AdapterMap<KT, VT, KA, VA> implements Map<KT, VT> {
         Set<Entry<KA, VA>> target = this.getWrapped().entrySet();
 
         ViewSet<Entry<KA, VA>, AdapterEntry> viewSet = ViewCollections.setMapped(target,
-                (kavaEntry, entryIterator) ->
-                        IteratorUtil.mapped(kavaEntry, entryIterator, AdapterEntry::new),
+                AdapterEntry::new,
                 y -> target.add(y.getWrapped()),
                 adapterEntry -> target.remove(adapterEntry.getWrapped())
         );
