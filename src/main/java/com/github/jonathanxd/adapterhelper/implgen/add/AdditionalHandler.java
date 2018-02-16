@@ -46,7 +46,7 @@ import java.util.Optional;
 /**
  * Additional handler can be used to generate additional things for AdapterHelper implementation
  * generator, dependency on {@code AdapterHelper} is not required for this work, only dependency on
- * {@code CodeAPI} is required. To work without implementing this interface directly, you must to
+ * {@code Kores} is required. To work without implementing this interface directly, you must to
  * have all methods static following the interface methods signature, a Proxy will be generated to
  * call the static methods of your class, and {@code default} behavior of interface remains the
  * same, this means that if you don't implement the method on the class, the default method

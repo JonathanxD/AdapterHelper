@@ -119,7 +119,7 @@ class AdapterSpecification<E : Any, T : Any> private constructor(
         /**
          * Creates an adapter specification using [AdapterImplGen] to create adapter class.
          *
-         * Requires CodeAPI, CodeAPI-BytecodeWriter and CodeGenUtil
+         * Requires Kores, Kores-BytecodeWriter and CodeGenUtil
          *
          * @param adapterInterface Interface that adapts [adapteeClass], this interface should contains default methods
          * that overrides [adapterClass] methods. Methods of [Adapter] and [AdapterBase] classes are override by generator,
@@ -145,7 +145,7 @@ class AdapterSpecification<E : Any, T : Any> private constructor(
         /**
          * Creates an adapter specification using [AdapterImplGen] to create adapter class.
          *
-         * Requires CodeAPI, CodeAPI-BytecodeWriter and CodeGenUtil
+         * Requires Kores, Kores-BytecodeWriter and CodeGenUtil
          *
          * @param adapterInterface Interface that adapts [adapteeClass], this interface should contains default methods
          * that overrides [adapterClass] methods. Methods of [Adapter] and [AdapterBase] classes are override by generator,

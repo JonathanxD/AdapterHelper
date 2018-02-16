@@ -27,38 +27,63 @@
  */
 package com.github.jonathanxd.adapterhelper
 
-inline fun <reified E: Any, reified O: Any> AdapterManager.adaptUnchecked(instance: E) =
+inline fun <reified E : Any, reified O : Any> AdapterManager.adaptUnchecked(instance: E) =
     this.adaptUnchecked(E::class.java, instance, O::class.java)
 
-inline fun <reified E: Any, reified O: Any> AdapterManager.adapt(instance: E) =
-        this.adapt(E::class.java, instance, O::class.java)
+inline fun <reified E : Any, reified O : Any> AdapterManager.adapt(instance: E) =
+    this.adapt(E::class.java, instance, O::class.java)
 
-inline fun <reified F: Any, reified T: Any> AdapterManager.convertUnchecked(instance: F, adapter: Adapter<*>? = null) =
-        this.convertUnchecked(F::class.java, T::class.java, instance, adapter)
+inline fun <reified F : Any, reified T : Any> AdapterManager.convertUnchecked(
+    instance: F,
+    adapter: Adapter<*>? = null
+) =
+    this.convertUnchecked(F::class.java, T::class.java, instance, adapter)
 
-inline fun <reified I: Any, reified O: Any> AdapterManager.convert(instance: I, adapter: Adapter<*>? = null) =
-        this.convert(I::class.java, O::class.java, instance, adapter)
+inline fun <reified I : Any, reified O : Any> AdapterManager.convert(
+    instance: I,
+    adapter: Adapter<*>? = null
+) =
+    this.convert(I::class.java, O::class.java, instance, adapter)
 
-inline fun <reified I: Any, reified O: Any> AdapterManager.registerConverter(converter: Converter<I, O>) =
-        this.registerConverter(I::class.java, O::class.java, converter)
+inline fun <reified I : Any, reified O : Any> AdapterManager.registerConverter(converter: Converter<I, O>) =
+    this.registerConverter(I::class.java, O::class.java, converter)
 
 // Collection
 
-inline fun <reified E: Any, reified O: Any> AdapterManager.createAdapterList(from: List<E>) =
-        this.createAdapterList(E::class.java, from, O::class.java)
+inline fun <reified E : Any, reified O : Any> AdapterManager.createAdapterList(from: List<E>) =
+    this.createAdapterList(E::class.java, from, O::class.java)
 
-inline fun <reified E: Any, reified O: Any> AdapterManager.createAdapterSet(from: Set<E>) =
-        this.createAdapterSet(E::class.java, from, O::class.java)
+inline fun <reified E : Any, reified O : Any> AdapterManager.createAdapterSet(from: Set<E>) =
+    this.createAdapterSet(E::class.java, from, O::class.java)
 
-inline fun <reified E: Any, reified O: Any> AdapterManager.createAdapterCollection(from: Collection<E>) =
-        this.createAdapterCollection(E::class.java, from, O::class.java)
+inline fun <reified E : Any, reified O : Any> AdapterManager.createAdapterCollection(from: Collection<E>) =
+    this.createAdapterCollection(E::class.java, from, O::class.java)
 
-inline fun <reified KE: Any, reified VE: Any, reified KO: Any, reified VO: Any> AdapterManager.createAdapterMap(from: Map<KE, VE>) =
-        this.createAdapterMap(KE::class.java, VE::class.java, from, KO::class.java, VO::class.java)
+inline fun <reified KE : Any, reified VE : Any, reified KO : Any, reified VO : Any> AdapterManager.createAdapterMap(
+    from: Map<KE, VE>
+) = this.createAdapterMap(KE::class.java, VE::class.java, from, KO::class.java, VO::class.java)
 
 // Factory
 
-inline fun <reified A: Any, reified O: Any> AdapterManager.register(noinline factory: (O, AdapterManager) -> A) {
+inline fun <reified A : Any, reified O : Any> AdapterManager.register(noinline factory: (O, AdapterManager) -> A) {
     this.register(AdapterSpecification.create(factory, A::class.java, O::class.java))
 }
 
+// Dynamic
+
+/**
+ * @param A Adapter type
+ * @param T Common interface
+ * @param F Type to adapt (e.g platform type).
+ */
+inline fun <reified A : T, reified T : Any, reified F : Any> fromInterface() =
+    AdapterSpecification.createFromInterface(A::class.java, T::class.java, F::class.java)
+
+/**
+ * @param A Adapter type
+ * @param T Common interface
+ * @param F Type to adapt (e.g platform type).
+ */
+inline fun <reified A : T, reified T : Any, reified F : Any> fromInterface(
+    noinline factory: (genClass: Class<*>, e: F, manager: AdapterManager) -> A
+) = AdapterSpecification.createFromInterface(A::class.java, T::class.java, F::class.java, factory)

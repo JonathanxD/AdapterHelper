@@ -60,7 +60,7 @@ import java.util.*
 import java.util.function.Supplier
 
 /**
- * Adapter utility (Requires CodeAPI, CodeAPI-BytecodeWriter and CodeGenUtil).
+ * Adapter utility (Requires Kores, Kores-BytecodeWriter and CodeGenUtil).
  */
 object AdapterImplGen {
 
