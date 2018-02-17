@@ -56,7 +56,7 @@ class WeakAdapteeStorage : Storage {
     private val map = WeakHashMap<Any, MutableMap<String, Any?>>()
 
     override fun <E : Any, T : Any, V : Any> store(adaptee: E, name: String, value: V?, adapterType: Class<T>) {
-        this.map.computeIfAbsent(adaptee, {mutableMapOf()}).put(name, value)
+        this.map.computeIfAbsent(adaptee, {mutableMapOf()})[name] = value
     }
 
     override fun <E : Any, T : Any, V : Any> retrieve(adaptee: E, name: String, adapterType: Class<T>): V? {
